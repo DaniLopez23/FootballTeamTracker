@@ -24,4 +24,5 @@ app_server <- function(input, output, session) {
   })
 
   mod_overview_server("overview")
+  mod_players_server("players")
 }

@@ -16,6 +16,12 @@ app_ui <- function(request) {
         mod_overview_ui("overview")
       ),
       bslib::nav_panel(
+        title = "Jugadores",
+        value = "players",
+        fillable = FALSE,
+        mod_players_ui("players")
+      ),
+      bslib::nav_panel(
         title = "Comparador",
         value = "comparador",
         tags$p("Comparador content here.")
