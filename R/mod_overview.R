@@ -44,6 +44,9 @@ mod_overview_ui <- function(id) {
       .jornada-sq-active {
         background-color: #0d6efd; color: white; border-color: #0d6efd;
       }
+      .goals-mode-select .shiny-input-container {
+        margin-bottom: 0;
+      }
     "),
 
     bslib::layout_sidebar(
@@ -79,12 +82,12 @@ mod_overview_ui <- function(id) {
 
       # Fila 1: Info equipo + KPIs
       bslib::layout_columns(
-        col_widths = c(5, 7),
+        col_widths = c(6, 6),
         fill = FALSE,
 
         tags$div(
           class = "d-flex align-items-center gap-4 py-2",
-          tags$img(src = "www/CazalegasEscudo.png", style = "height: 140px;"),
+          tags$img(src = "www/CazalegasEscudo.png", style = "height: 210px;"),
           tags$div(
             tags$h4(textOutput(ns("club_name"), inline = TRUE), class = "mb-2 fw-bold"),
             tags$div(
@@ -132,7 +135,22 @@ mod_overview_ui <- function(id) {
         fill = FALSE,
         class = "mt-3",
         bslib::card(
-          bslib::card_header("Goles a favor y en contra por jornada"),
+          bslib::card_header(
+            tags$div(
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
+              tags$span("Goles a favor y en contra"),
+              tags$div(
+                class = "d-flex align-items-center gap-2 goals-mode-select",
+                shiny::selectInput(
+                  ns("goals_line_mode"),
+                  label = NULL,
+                  choices = c("Por jornada" = "jornada", "Acumulado" = "acumulado"),
+                  selected = "jornada",
+                  width = "170px"
+                )
+              )
+            )
+          ),
           bslib::card_body(plotly::plotlyOutput(ns("plot_goals_line"), height = "300px"))
         ),
         bslib::card(
@@ -344,20 +362,38 @@ mod_overview_server <- function(id) {
     output$plot_goals_line <- plotly::renderPlotly({
       d <- df_filtered()
       if (nrow(d) == 0) return(plotly::plotly_empty())
+      is_accum <- identical(input$goals_line_mode, "acumulado")
+      d$goles_favor_plot <- if (is_accum) cumsum(d$goles_favor) else d$goles_favor
+      d$goles_contra_plot <- if (is_accum) cumsum(d$goles_contra) else d$goles_contra
+      hover_lbl <- if (is_accum) "goles acumulados" else "goles"
+
       plotly::plot_ly(d, x = ~Jornada) |>
         plotly::add_trace(
-          y = ~goles_favor, type = "scatter", mode = "lines+markers", name = "A favor",
+          y = ~goles_favor_plot, type = "scatter", mode = "lines+markers", name = "A favor",
           line = list(color = "#198754", width = 2), marker = list(size = 7, color = "#198754"),
-          text = ~paste0("J", Jornada, ": ", goles_favor, " goles"), hoverinfo = "text"
+          text = ~paste0("J", Jornada, ": ", goles_favor_plot, " ", hover_lbl), hoverinfo = "text"
         ) |>
         plotly::add_trace(
-          y = ~goles_contra, type = "scatter", mode = "lines+markers", name = "En contra",
+          y = ~goles_contra_plot, type = "scatter", mode = "lines+markers", name = "En contra",
           line = list(color = "#dc3545", width = 2), marker = list(size = 7, color = "#dc3545"),
-          text = ~paste0("J", Jornada, ": ", goles_contra, " goles"), hoverinfo = "text"
+          text = ~paste0("J", Jornada, ": ", goles_contra_plot, " ", hover_lbl), hoverinfo = "text"
         ) |>
         plotly::layout(
           xaxis = list(title = "Jornada", dtick = 1, tickmode = "linear"),
-          yaxis = list(title = "Goles", dtick = 1, rangemode = "tozero"),
+          yaxis = if (is_accum) {
+            list(
+              title = "Goles acumulados",
+              rangemode = "tozero",
+              tickmode = "auto",
+              nticks = 6
+            )
+          } else {
+            list(
+              title = "Goles por jornada",
+              dtick = 1,
+              rangemode = "tozero"
+            )
+          },
           legend = list(orientation = "h", y = -0.25),
           hovermode = "x unified"
         ) |>

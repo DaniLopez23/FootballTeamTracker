@@ -11,7 +11,7 @@ app_ui <- function(request) {
       title = tags$img(src = "www/AppLogo.png", height = "64px"),
       id = "main_nav",
       bslib::nav_panel(
-        title = "Overview",
+        title = "Equipo",
         value = "overview",
         mod_overview_ui("overview")
       ),
@@ -23,28 +23,33 @@ app_ui <- function(request) {
       bslib::nav_spacer(),
       bslib::nav_item(
         tags$div(
-          class = "d-flex align-items-center gap-4",
-          tags$button(
-            id = "btn_help",
-            class = "btn btn-link nav-link p-1",
+          class = "d-flex align-items-center header-controls",
+          actionButton(
+            inputId = "btn_help",
+            label = NULL,
+            icon = icon("circle-question"),
+            class = "btn btn-link nav-link p-1 action-button",
             style = "font-size: 1.4rem;",
-            title = "Ayuda",
-            icon("circle-question")
+            title = "Ayuda"
           ),
-          tags$button(
-            id = "btn_lang",
-            class = "btn btn-link nav-link p-1 d-flex align-items-center gap-1",
-            style = "font-size: 1.4rem;",
-            title = "Cambiar idioma",
-            icon("language"),
-            tags$span("EN", id = "lang_label", class = "small")
+          tags$div(
+            class = "d-flex align-items-center gap-2 lang-switch",
+            tags$span("ES", class = "small"),
+            bslib::input_switch(
+              id = "lang_switch",
+              label = NULL,
+              value = FALSE,
+              width = "44px"
+            ),
+            tags$span("EN", class = "small")
           ),
-          tags$button(
-            id = "btn_expand",
-            class = "btn btn-link nav-link p-1",
+          actionButton(
+            inputId = "btn_expand",
+            label = NULL,
+            icon = icon("expand"),
+            class = "btn btn-link nav-link p-1 action-button",
             style = "font-size: 1.4rem;",
-            title = "Pantalla completa",
-            icon("expand")
+            title = "Pantalla completa"
           )
         )
       )
@@ -71,7 +76,39 @@ golem_add_external_resources <- function() {
     bundle_resources(
       path = app_sys("app/www"),
       app_title = "FootballTeamTracker"
-    )
+    ),
+    tags$style(HTML("\
+      .header-controls {\
+        gap: 1.25rem;\
+        padding-right: 0.75rem;\
+      }\
+      .header-controls .action-button {\
+        margin: 0;\
+      }\
+      .lang-switch {\
+        line-height: 1;\
+      }\
+      .lang-switch .shiny-input-container,\
+      .lang-switch .form-group,\
+      .lang-switch .bslib-input-switch {\
+        margin: 0;\
+      }\
+      .lang-switch .form-check {\
+        margin-bottom: 0;\
+        display: flex;\
+        align-items: center;\
+      }\
+    ")),
+    tags$script(HTML("\
+      Shiny.addCustomMessageHandler('toggleFullscreen', function(_) {\
+        var root = document.documentElement;\
+        if (!document.fullscreenElement) {\
+          if (root.requestFullscreen) root.requestFullscreen();\
+        } else {\
+          if (document.exitFullscreen) document.exitFullscreen();\
+        }\
+      });\
+    "))
     # Add here other external resources
     # for example, you can add shinyalert::useShinyalert()
   )
