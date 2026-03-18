@@ -17,6 +17,10 @@ app_server <- function(input, output, session) {
       tags$div(
         tags$h5("Equipo"),
         tags$p("Panel principal con información del club, KPIs, evolución de la clasificación, resultados, goles por jornada y reparto total de goles."),
+        tags$h5("Jugadores"),
+        tags$p("Estadísticas individuales de jugadores: goleadores, tarjetas, minutos jugados, cambios y diferentes métricas de participación."),
+        tags$h5("Partidos"),
+        tags$p("Detalles de cada partido: resultado, fecha, timeline de eventos (goles y tarjetas) y timeline de cambios realizados."),
         tags$h5("Comparador"),
         tags$p("Sección preparada para comparar equipos y métricas de forma paralela.")
       )
@@ -25,4 +29,5 @@ app_server <- function(input, output, session) {
 
   mod_overview_server("overview")
   mod_players_server("players")
+  mod_matches_server("matches")
 }

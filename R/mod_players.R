@@ -188,8 +188,8 @@ mod_players_server <- function(id) {
     observeEvent(input$vuelta, {
       sel <- switch(input$vuelta,
         "all"    = seq_len(max_jornada),
-        "first"  = seq_len(min(12L, max_jornada)),
-        "second" = if (max_jornada > 12L) seq(13L, max_jornada) else integer(0)
+        "first"  = seq_len(min(15L, max_jornada)),
+        "second" = if (max_jornada > 15L) seq(16L, max_jornada) else integer(0)
       )
       rv$j_start <- if (length(sel) > 0) min(sel) else NULL
       rv$j_end   <- if (length(sel) > 0) max(sel) else NULL
@@ -200,13 +200,18 @@ mod_players_server <- function(id) {
     df_filtered <- reactive({
       d <- df_eventos
 
-      # Filtro por equipo: solo nuestro equipo (EquipoLocalID == 1 OR EquipoVisitanteID == 1)
-      d <- d[d$EquipoLocalID == 1 | d$EquipoVisitanteID == 1, ]
+      # El sheet "Eventos" ya solo contiene eventos de nuestro equipo (no necesita filtro por equipo)
+      # Solo filtrar por localización si el usuario lo especifica
+      # Para esto necesitaríamos añadir la columna de localización al Excel "Eventos"
+      # Por ahora, omitimos el filtro por equipo que causaba el error
 
-      if (isTRUE(input$location == "local")) {
-        d <- d[d$EquipoLocalID == 1, ]
-      } else if (isTRUE(input$location == "visitante")) {
-        d <- d[d$EquipoVisitanteID == 1, ]
+      # Filtro por localización (si existe la columna)
+      if ("Localizacion" %in% names(d)) {
+        if (isTRUE(input$location == "local")) {
+          d <- d[d$Localizacion == "Local", ]
+        } else if (isTRUE(input$location == "visitante")) {
+          d <- d[d$Localizacion == "Visitante", ]
+        }
       }
 
       sel <- rv$selected_jornadas
@@ -254,7 +259,9 @@ mod_players_server <- function(id) {
       d <- df_filtered()
       d_rev <- d[d$Titular == 0 & d$Sustituido == 1 & d$Jugador != "Rival", ]
       if (nrow(d_rev) == 0) return("--")
-      rev_count <- table(d_rev$Jugador)
+      # Contar partidos únicos (Jugador + Jornada) en lugar de filas
+      d_rev_unique <- unique(d_rev[, c("Jugador", "Jornada")])
+      rev_count <- table(d_rev_unique$Jugador)
       top_name <- names(rev_count)[which.max(rev_count)]
       paste0(top_name, " (", max(rev_count), "x)")
     })
@@ -264,7 +271,9 @@ mod_players_server <- function(id) {
       d <- df_filtered()
       d_chg <- d[d$Titular == 1 & d$Sustituido == 1 & d$Jugador != "Rival", ]
       if (nrow(d_chg) == 0) return("--")
-      chg_count <- table(d_chg$Jugador)
+      # Contar partidos únicos (Jugador + Jornada) en lugar de filas
+      d_chg_unique <- unique(d_chg[, c("Jugador", "Jornada")])
+      chg_count <- table(d_chg_unique$Jugador)
       top_name <- names(chg_count)[which.max(chg_count)]
       paste0(top_name, " (", max(chg_count), "x)")
     })
@@ -374,7 +383,9 @@ mod_players_server <- function(id) {
             !is.na(d$Titular) & !is.na(d$Sustituido) & !is.na(d$MinutosTotales) &
             d$Titular == 1 & d$Sustituido == 0 & d$MinutosTotales == 90, ]
           if (nrow(d_comp) == 0) return(plotly::plotly_empty())
-          cnt <- as.data.frame(table(d_comp$Jugador))
+          # Contar partidos únicos (Jugador + Jornada) en lugar de filas
+          d_comp_unique <- unique(d_comp[, c("Jugador", "Jornada")])
+          cnt <- as.data.frame(table(d_comp_unique$Jugador))
           names(cnt) <- c("Jugador", "Valor")
           cnt$Valor <- as.numeric(cnt$Valor)
           cnt
@@ -384,7 +395,9 @@ mod_players_server <- function(id) {
             !is.na(d$Titular) & !is.na(d$Sustituido) &
             d$Titular == 1 & d$Sustituido == 1, ]
           if (nrow(d_ts) == 0) return(plotly::plotly_empty())
-          cnt <- as.data.frame(table(d_ts$Jugador))
+          # Contar partidos únicos (Jugador + Jornada) en lugar de filas
+          d_ts_unique <- unique(d_ts[, c("Jugador", "Jornada")])
+          cnt <- as.data.frame(table(d_ts_unique$Jugador))
           names(cnt) <- c("Jugador", "Valor")
           cnt$Valor <- as.numeric(cnt$Valor)
           cnt
@@ -394,7 +407,9 @@ mod_players_server <- function(id) {
             !is.na(d$Titular) & !is.na(d$Sustituido) &
             d$Titular == 0 & d$Sustituido == 1, ]
           if (nrow(d_se) == 0) return(plotly::plotly_empty())
-          cnt <- as.data.frame(table(d_se$Jugador))
+          # Contar partidos únicos (Jugador + Jornada) en lugar de filas
+          d_se_unique <- unique(d_se[, c("Jugador", "Jornada")])
+          cnt <- as.data.frame(table(d_se_unique$Jugador))
           names(cnt) <- c("Jugador", "Valor")
           cnt$Valor <- as.numeric(cnt$Valor)
           cnt

@@ -228,8 +228,8 @@ mod_overview_server <- function(id) {
     observeEvent(input$vuelta, {
       sel <- switch(input$vuelta,
         "all"    = seq_len(max_jornada),
-        "first"  = seq_len(min(12L, max_jornada)),
-        "second" = if (max_jornada > 12L) seq(13L, max_jornada) else integer(0)
+        "first"  = seq_len(min(15L, max_jornada)),
+        "second" = if (max_jornada > 15L) seq(16L, max_jornada) else integer(0)
       )
       rv$j_start <- if (length(sel) > 0) min(sel) else NULL
       rv$j_end   <- if (length(sel) > 0) max(sel) else NULL
