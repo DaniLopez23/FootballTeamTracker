@@ -8,526 +8,501 @@
 #'
 #' @importFrom shiny NS tagList
 mod_matches_ui <- function(id) {
-  ns <- NS(id)
+	ns <- shiny::NS(id)
+	tags <- shiny::tags
 
-  tagList(
-    # CSS cuadros de jornada (reutilizado de overview)
-    tags$style("
-      .jornada-sq {
-        width: 30px; height: 30px;
-        display: inline-flex; align-items: center; justify-content: center;
-        border: 1px solid #dee2e6; border-radius: 4px;
-        cursor: pointer; font-size: 0.72rem; font-weight: 600;
-        color: #495057; user-select: none;
-        transition: background-color 0.15s, color 0.15s, border-color 0.15s;
-      }
-      .jornada-sq:hover:not(.jornada-sq-active) {
-        background-color: #e7f0ff; border-color: #0d6efd;
-      }
-      .jornada-sq-active {
-        background-color: #0d6efd; color: white; border-color: #0d6efd;
-      }
-      .timeline-container {
-        position: relative;
-        padding: 1.5rem 0;
-      }
-      .timeline-line {
-        position: absolute;
-        left: 50%;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background: #dee2e6;
-        transform: translateX(-50%);
-      }
-      .timeline-event {
-        position: relative;
-        display: flex;
-        align-items: center;
-        margin-bottom: 1.5rem;
-      }
-      .timeline-event.left {
-        justify-content: center;
-        padding-right: 0;
-      }
-      .timeline-event.right {
-        justify-content: center;
-        padding-left: 0;
-      }
-      .timeline-marker {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: white;
-        border: 2px solid;
-        z-index: 2;
-      }
-      .timeline-content {
-        background: #f8f9fa;
-        padding: 0.5rem 0.75rem;
-        border-radius: 6px;
-        border-left: 3px solid;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      }
-      .timeline-minute {
-        font-weight: 700;
-        font-size: 0.75rem;
-        color: #495057;
-        margin-right: 0.5rem;
-      }
-      .timeline-text {
-        font-size: 0.85rem;
-        color: #212529;
-      }
-      .match-header-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-      }
-      .match-info-item {
-        padding: 0.75rem;
-        background: rgba(255,255,255,0.1);
-        border-radius: 6px;
-        backdrop-filter: blur(10px);
-      }
-    "),
+	shiny::tagList(
+		tags$style(
+			"
+			.matches-list {
+				display: flex;
+				flex-direction: column;
+				gap: 0.45rem;
+			}
+			.match-item {
+				width: 100%;
+				border: 1px solid #dce3ef;
+				border-radius: 10px;
+				background: #ffffff;
+				text-align: left;
+				padding: 0.65rem 0.75rem;
+				cursor: pointer;
+				transition: border-color 0.15s ease, background-color 0.15s ease;
+			}
+			.match-item:hover {
+				border-color: #0d6efd;
+				background: #f4f8ff;
+			}
+			.match-item-active {
+				border-color: #0d6efd;
+				background: #eaf2ff;
+				box-shadow: inset 0 0 0 1px #0d6efd;
+			}
+			.match-jornada {
+				font-size: 0.72rem;
+				font-weight: 700;
+				color: #6c757d;
+				text-transform: uppercase;
+			}
+			.match-teams {
+				margin-top: 0.2rem;
+				font-size: 0.88rem;
+				font-weight: 600;
+				color: #1f2d3d;
+			}
+			.match-score {
+				margin-top: 0.15rem;
+				font-size: 0.86rem;
+				font-weight: 700;
+				color: #0d6efd;
+			}
+			.match-page-title {
+				font-weight: 700;
+				margin-bottom: 0.8rem;
+				color: #1f2d3d;
+			}
+			.timeline-wrap {
+				position: relative;
+			}
+			.timeline-wrap::before {
+				content: '';
+				position: absolute;
+				top: 0.3rem;
+				bottom: 0.3rem;
+				left: 50%;
+				transform: translateX(-50%);
+				width: 3px;
+				background: #d9e2ef;
+				border-radius: 2px;
+			}
+			.timeline-row {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr);
+				gap: 0.8rem;
+				align-items: center;
+				margin-bottom: 0.9rem;
+				position: relative;
+			}
+			.timeline-row:last-child {
+				margin-bottom: 0;
+			}
+			.timeline-center {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				z-index: 1;
+			}
+			.timeline-dot {
+				width: 0.82rem;
+				height: 0.82rem;
+				border-radius: 999px;
+				box-shadow: 0 0 0 4px #ffffff;
+			}
+			.timeline-dot-goal {
+				background: #198754;
+			}
+			.timeline-dot-card {
+				background: #f0ad00;
+			}
+			.timeline-dot-sub {
+				background: #0d6efd;
+			}
+			.timeline-time {
+				font-size: 0.78rem;
+				font-weight: 700;
+				color: #6c757d;
+				margin-top: 0.2rem;
+			}
+			.timeline-side {
+				min-height: 1px;
+			}
+			.timeline-side-left {
+				display: flex;
+				justify-content: flex-end;
+			}
+			.timeline-side-right {
+				display: flex;
+				justify-content: flex-start;
+			}
+			.timeline-event-card {
+				width: min(100%, 300px);
+				border: 1px solid #dce3ef;
+				border-radius: 10px;
+				padding: 0.55rem 0.65rem;
+				background: #ffffff;
+			}
+			.timeline-event-team {
+				font-size: 0.73rem;
+				text-transform: uppercase;
+				font-weight: 700;
+				color: #6c757d;
+			}
+			.timeline-event-title {
+				margin-top: 0.12rem;
+				font-size: 0.92rem;
+				font-weight: 600;
+				color: #1f2d3d;
+			}
+			.timeline-event-meta {
+				margin-top: 0.1rem;
+				font-size: 0.82rem;
+				color: #6c757d;
+			}
+			.timeline-event-goal {
+				border-left: 4px solid #198754;
+				background: #eef9f2;
+			}
+			.timeline-event-sub {
+				border-left: 4px solid #0d6efd;
+				background: #edf4ff;
+			}
+			.timeline-event-card-yellow {
+				border-left: 4px solid #f0ad00;
+				background: #fff9e8;
+			}
+			.timeline-event-card-red {
+				border-left: 4px solid #dc3545;
+				background: #ffeff1;
+			}
+			.empty-right-panel {
+				min-height: 520px;
+				border: 1px dashed #d6dee9;
+				border-radius: 10px;
+				background: #fbfdff;
+			}
+			@media (max-width: 991px) {
+				.timeline-row {
+					grid-template-columns: 1fr;
+					gap: 0.45rem;
+					padding-left: 1.1rem;
+				}
+				.timeline-wrap::before {
+					left: 0.2rem;
+					transform: none;
+				}
+				.timeline-center {
+					align-items: flex-start;
+					margin-left: -0.06rem;
+				}
+				.timeline-side-left,
+				.timeline-side-right {
+					justify-content: flex-start;
+				}
+				.timeline-event-card {
+					width: 100%;
+				}
+			}
+			"
+		),
 
-    # Fila 1: Filtros de jornada y selector de partido
-    bslib::card(
-      class = "mb-3",
-      bslib::card_body(
-        class = "p-3",
-        bslib::layout_columns(
-          col_widths = c(6, 6),
-          tags$div(
-            tags$p("Jornadas", style = "font-weight:600; margin-bottom:0.5rem; font-size:0.9rem;"),
-            uiOutput(ns("jornada_squares"))
-          ),
-          tags$div(
-            tags$p("Seleccionar partido", style = "font-weight:600; margin-bottom:0.5rem; font-size:0.9rem;"),
-            shiny::selectInput(
-              ns("partido_selector"),
-              NULL,
-              choices = NULL,
-              width = "100%"
-            )
-          )
-        )
-      )
-    ),
+		bslib::layout_sidebar(
+			fill = FALSE,
+			fillable = FALSE,
 
-    # Fila 2: Información del partido
-    bslib::card(
-      class = "match-header-card mb-3",
-      bslib::card_body(
-        class = "p-4",
-        uiOutput(ns("match_header"))
-      )
-    ),
+			sidebar = bslib::sidebar(
+				width = 300,
+				open = TRUE,
+				tags$p("Partidos", style = "font-weight: 700; margin-bottom: 0.5rem;"),
+				shiny::uiOutput(ns("matches_list"))
+			),
 
-    # Fila 3: Timelines
-    bslib::layout_columns(
-      col_widths = c(6, 6),
-      fill = FALSE,
+			tags$div(
+				class = "match-page-title",
+				shiny::textOutput(ns("selected_match_title"), inline = TRUE)
+			),
 
-      bslib::card(
-        bslib::card_header("Timeline de Eventos (Goles, Tarjetas y Sustituciones)"),
-        bslib::card_body(
-          class = "p-3",
-          style = "min-height: 400px; max-height: 600px; overflow-y: auto;",
-          uiOutput(ns("timeline_eventos"))
-        )
-      ),
+			bslib::layout_columns(
+				col_widths = c(7, 5),
+				fill = FALSE,
 
-      bslib::card(
-        bslib::card_header("Timeline de Cambios"),
-        bslib::card_body(
-          class = "p-3",
-          style = "min-height: 400px; max-height: 600px; overflow-y: auto;",
-          uiOutput(ns("timeline_cambios"))
-        )
-      )
-    )
-  )
+				bslib::card(
+					bslib::card_header("Timeline de eventos"),
+					bslib::card_body(
+						shiny::uiOutput(ns("timeline_ui"))
+					)
+				),
+
+				bslib::card(
+					bslib::card_header("Panel derecho"),
+					bslib::card_body(
+						tags$div(class = "empty-right-panel")
+					)
+				)
+			)
+		)
+	)
 }
 
 #' matches Server Functions
 #'
 #' @noRd
-mod_matches_server <- function(id){
-  moduleServer(id, function(input, output, session){
-    ns <- session$ns
+mod_matches_server <- function(id) {
+	shiny::moduleServer(id, function(input, output, session) {
+		ns <- session$ns
+		tags <- shiny::tags
 
-    # --- Carga de datos ---
-    df_partidos <- readxl::read_excel(app_sys("app/data/CAZALEGAS_B_DATA.xlsx"), sheet = "Partidos")
-    df_eventos <- readxl::read_excel(app_sys("app/data/CAZALEGAS_B_DATA.xlsx"), sheet = "Eventos")
+		pick_col <- function(df, candidates) {
+			found <- candidates[candidates %in% names(df)]
+			if (length(found) == 0) return(NULL)
+			found[[1]]
+		}
 
-    # Filtrar solo partidos del equipo (ID 1)
-    df_partidos <- df_partidos[df_partidos$ID_EquipoLocal == 1 | df_partidos$ID_EquipoVisitante == 1, ]
-    df_partidos <- df_partidos[order(df_partidos$Jornada), ]
+		safe_chr <- function(x) {
+			if (is.null(x)) return(character())
+			as.character(x)
+		}
 
-    max_jornada <- max(df_partidos$Jornada)
+		df_matches <- readxl::read_excel(app_sys("app/data/CAZALEGAS_B_DATA.xlsx"), sheet = "Partidos")
+		df_events  <- readxl::read_excel(app_sys("app/data/CAZALEGAS_B_DATA.xlsx"), sheet = "Eventos")
 
-    # --- Estado reactivo ---
-    rv <- shiny::reactiveValues(
-      selected_jornada = 1L,
-      initialized = FALSE
-    )
+		# Columnas base de partidos
+		col_jornada <- pick_col(df_matches, c("Jornada", "jornada"))
+		col_loc_id  <- pick_col(df_matches, c("ID_EquipoLocal", "IdEquipoLocal", "IDEquipoLocal"))
+		col_vis_id  <- pick_col(df_matches, c("ID_EquipoVisitante", "IdEquipoVisitante", "IDEquipoVisitante"))
+		col_loc     <- pick_col(df_matches, c("EquipoLocal", "Local", "NombreEquipoLocal"))
+		col_vis     <- pick_col(df_matches, c("EquipoVisitante", "Visitante", "NombreEquipoVisitante"))
+		col_gl      <- pick_col(df_matches, c("GolesLocal", "GolLocal", "MarcadorLocal"))
+		col_gv      <- pick_col(df_matches, c("GolesVisitante", "GolVisitante", "MarcadorVisitante"))
 
-    # --- Actualizar selector de partidos cuando hay datos (solo una vez) ---
-    observe({
-      if (!rv$initialized && nrow(df_partidos) > 0) {
-        choices <- setNames(
-          df_partidos$Jornada,
-          sprintf("J%d: %s %d - %d %s",
-                  df_partidos$Jornada,
-                  ifelse(df_partidos$ID_EquipoLocal == 1, "Local", "Visitante"),
-                  ifelse(df_partidos$ID_EquipoLocal == 1, df_partidos$GolesLocal, df_partidos$GolesVisitante),
-                  ifelse(df_partidos$ID_EquipoLocal == 1, df_partidos$GolesVisitante, df_partidos$GolesLocal),
-                  ifelse(df_partidos$ID_EquipoLocal == 1, "Visitante", "Local"))
-        )
-        updateSelectInput(session, "partido_selector", choices = choices, selected = rv$selected_jornada)
-        rv$initialized <- TRUE
-      }
-    })
+		if (is.null(col_jornada)) {
+			df_matches$Jornada <- seq_len(nrow(df_matches))
+			col_jornada <- "Jornada"
+		}
 
-    # --- Cuadros de jornada ---
-    output$jornada_squares <- renderUI({
-      sel <- rv$selected_jornada
-      squares <- lapply(seq_len(max_jornada), function(j) {
-        active <- if (j == sel) "jornada-sq jornada-sq-active" else "jornada-sq"
-        tags$div(
-          class   = active,
-          `data-j` = j,
-          onclick  = paste0("Shiny.setInputValue('", ns("jornada_click"), "', ", j, ", {priority:'event'})"),
-          j
-        )
-      })
-      tags$div(style = "display:flex; flex-wrap:wrap; gap:4px;", squares)
-    })
+		get_team_names <- function(row) {
+			loc <- if (!is.null(col_loc)) as.character(row[[col_loc]]) else "Local"
+			vis <- if (!is.null(col_vis)) as.character(row[[col_vis]]) else "Visitante"
 
-    # --- Click en cuadrado de jornada → actualiza selector ---
-    observeEvent(input$jornada_click, {
-      j <- as.integer(input$jornada_click)
-      if (!identical(rv$selected_jornada, j)) {
-        rv$selected_jornada <- j
-        updateSelectInput(session, "partido_selector", selected = j)
-      }
-    })
+			if ((!is.null(col_loc_id) && !is.na(row[[col_loc_id]]) && row[[col_loc_id]] == 1) ||
+					(!is.null(col_vis_id) && !is.na(row[[col_vis_id]]) && row[[col_vis_id]] != 1)) {
+				own <- loc
+				rival <- vis
+			} else {
+				own <- vis
+				rival <- loc
+			}
 
-    # --- Cambio en selector → actualiza jornada seleccionada ---
-    observeEvent(input$partido_selector, {
-      if (!is.null(input$partido_selector) && nchar(input$partido_selector) > 0) {
-        j <- as.integer(input$partido_selector)
-        if (!identical(rv$selected_jornada, j)) {
-          rv$selected_jornada <- j
-        }
-      }
-    }, ignoreInit = TRUE)
+			list(own = own, rival = rival, loc = loc, vis = vis)
+		}
 
-    # --- Partido seleccionado ---
-    partido_actual <- reactive({
-      req(rv$selected_jornada)
-      df_partidos[df_partidos$Jornada == rv$selected_jornada, ]
-    })
+		own_is_local <- function(row) {
+			if (!is.null(col_loc_id) && !is.na(row[[col_loc_id]])) {
+				return(as.integer(row[[col_loc_id]]) == 1)
+			}
+			if (!is.null(col_vis_id) && !is.na(row[[col_vis_id]])) {
+				return(as.integer(row[[col_vis_id]]) != 1)
+			}
+			TRUE
+		}
 
-    # --- Eventos del partido actual ---
-    eventos_actual <- reactive({
-      req(rv$selected_jornada)
-      df_eventos[df_eventos$Jornada == rv$selected_jornada, ]
-    })
+		build_score <- function(row) {
+			gl <- if (!is.null(col_gl)) suppressWarnings(as.integer(row[[col_gl]])) else NA_integer_
+			gv <- if (!is.null(col_gv)) suppressWarnings(as.integer(row[[col_gv]])) else NA_integer_
+			if (is.na(gl) || is.na(gv)) return("-")
+			paste0(gl, " - ", gv)
+		}
 
-    # --- Header del partido ---
-    output$match_header <- renderUI({
-      p <- partido_actual()
-      if (nrow(p) == 0) return(tags$p("No hay datos disponibles", class = "text-center"))
+		df_matches$.__idx__ <- seq_len(nrow(df_matches))
 
-      # Determinar si es local o visitante
-      es_local <- p$ID_EquipoLocal == 1
-      equipo_nuestro <- "C.D Cazalegas - Ebora Formación"
-      equipo_rival <- "Rival"
-      goles_nuestros <- if (es_local) p$GolesLocal else p$GolesVisitante
-      goles_rival <- if (es_local) p$GolesVisitante else p$GolesLocal
+		rv <- shiny::reactiveValues(selected_match = if (nrow(df_matches) > 0) 1L else NA_integer_)
 
-      # Resultado
-      resultado <- if (goles_nuestros > goles_rival) {
-        "Victoria"
-      } else if (goles_nuestros < goles_rival) {
-        "Derrota"
-      } else {
-        "Empate"
-      }
+		shiny::observeEvent(input$match_click, {
+			clicked <- suppressWarnings(as.integer(input$match_click))
+			if (!is.na(clicked) && clicked %in% df_matches$.__idx__) {
+				rv$selected_match <- clicked
+			}
+		})
 
-      resultado_color <- if (goles_nuestros > goles_rival) {
-        "success"
-      } else if (goles_nuestros < goles_rival) {
-        "danger"
-      } else {
-        "warning"
-      }
+		output$matches_list <- shiny::renderUI({
+			if (nrow(df_matches) == 0) {
+				return(tags$div(class = "text-muted", "No hay partidos disponibles."))
+			}
 
-      # Manejar fecha y hora que pueden no existir
-      fecha_texto <- if ("Fecha" %in% names(p) && !is.na(p$Fecha)) {
-        format(p$Fecha, "%d/%m/%Y")
-      } else {
-        "Fecha no disponible"
-      }
+			items <- lapply(df_matches$.__idx__, function(idx) {
+				row <- df_matches[df_matches$.__idx__ == idx, , drop = FALSE]
+				teams <- get_team_names(row)
+				jornada <- as.character(row[[col_jornada]])
+				score <- build_score(row)
+				is_active <- identical(rv$selected_match, idx)
 
-      hora_texto <- if ("Hora" %in% names(p) && !is.na(p$Hora)) {
-        p$Hora
-      } else {
-        NULL
-      }
+				tags$button(
+					type = "button",
+					class = paste("match-item", if (is_active) "match-item-active" else ""),
+					onclick = paste0("Shiny.setInputValue('", ns("match_click"), "', ", idx, ", {priority:'event'})"),
+					tags$div(class = "match-jornada", paste("Jornada", jornada)),
+					tags$div(class = "match-teams", paste0(teams$loc, " vs ", teams$vis)),
+					tags$div(class = "match-score", score)
+				)
+			})
 
-      tags$div(
-        # Fecha y jornada
-        tags$div(
-          class = "d-flex justify-content-between align-items-center mb-3",
-          tags$div(
-            tags$h5(paste0("Jornada ", p$Jornada), class = "mb-0"),
-            tags$div(
-              class = "mt-1",
-              icon("calendar-days"),
-              tags$span(fecha_texto, class = "ms-2"),
-              if (!is.null(hora_texto)) {
-                tags$span(
-                  class = "ms-3",
-                  icon("clock"),
-                  tags$span(hora_texto, class = "ms-2")
-                )
-              }
-            )
-          ),
-          tags$span(
-            class = paste0("badge bg-", resultado_color, " fs-6 px-3 py-2"),
-            resultado
-          )
-        ),
+			tags$div(class = "matches-list", items)
+		})
 
-        # Resultado del partido
-        tags$div(
-          class = "d-flex justify-content-center align-items-center gap-4 py-3",
-          tags$div(
-            class = "text-center",
-            tags$h4(equipo_nuestro, class = "mb-0 fw-bold"),
-            tags$small(if (es_local) "Local" else "Visitante", class = "opacity-75")
-          ),
-          tags$div(
-            class = "text-center px-4",
-            tags$h1(
-              paste0(goles_nuestros, " - ", goles_rival),
-              class = "mb-0 fw-bold",
-              style = "font-size: 3rem;"
-            )
-          ),
-          tags$div(
-            class = "text-center",
-            tags$h4(equipo_rival, class = "mb-0 fw-bold"),
-            tags$small(if (es_local) "Visitante" else "Local", class = "opacity-75")
-          )
-        )
-      )
-    })
+		selected_match_row <- shiny::reactive({
+			shiny::req(!is.na(rv$selected_match))
+			df_matches[df_matches$.__idx__ == rv$selected_match, , drop = FALSE]
+		})
 
-    # --- Timeline de eventos (goles, tarjetas y sustituciones) ---
-    output$timeline_eventos <- renderUI({
-      ev <- eventos_actual()
-      p <- partido_actual()
+		output$selected_match_title <- shiny::renderText({
+			row <- selected_match_row()
+			teams <- get_team_names(row)
+			jornada <- as.character(row[[col_jornada]])
+			score <- build_score(row)
+			paste0("Jornada ", jornada, "  ", teams$loc, "  ", score, "  ", teams$vis)
+		})
 
-      if (nrow(ev) == 0 || nrow(p) == 0) {
-        return(tags$div(
-          class = "text-center text-muted py-5",
-          icon("circle-info", class = "fa-2x mb-2"),
-          tags$p("No hay eventos registrados para este partido")
-        ))
-      }
+		# Columnas base de eventos
+		col_ev_jornada <- pick_col(df_events, c("Jornada", "jornada"))
+		col_ev_tipo    <- pick_col(df_events, c("Tipo", "tipo", "Evento"))
+		col_ev_min     <- pick_col(df_events, c("Minuto", "minuto", "Min", "Minute"))
+		col_ev_player  <- pick_col(df_events, c("Jugador", "jugador", "Player"))
+		col_ev_obs     <- pick_col(df_events, c("Observaciones", "Observacion", "Detalle", "Descripcion"))
+		col_ev_in      <- pick_col(df_events, c("JugadorEntra", "Entra", "Jugador_Entra"))
+		col_ev_out     <- pick_col(df_events, c("JugadorSale", "Sale", "Jugador_Sale"))
+		col_ev_team    <- pick_col(df_events, c("Equipo", "NombreEquipo", "EquipoEvento"))
+		col_ev_side    <- pick_col(df_events, c("Localizacion", "Localidad", "Side", "EsLocal"))
 
-      # Crear lista de eventos combinando goles, tarjetas y sustituciones
-      eventos_lista <- list()
+		clean_txt <- function(x) tolower(trimws(as.character(x)))
 
-      # 1. Añadir goles y tarjetas
-      ev_goles_tarjetas <- ev[ev$Tipo %in% c("Gol", "Tarjeta Amarilla", "Tarjeta Roja"), ]
-      if (nrow(ev_goles_tarjetas) > 0) {
-        for (i in seq_len(nrow(ev_goles_tarjetas))) {
-          evento <- ev_goles_tarjetas[i, ]
-          eventos_lista[[length(eventos_lista) + 1]] <- list(
-            minuto = evento$Minuto,
-            tipo = evento$Tipo,
-            jugador = evento$Jugador,
-            es_cambio = FALSE
-          )
-        }
-      }
+		event_type_norm <- function(x) {
+			x <- tolower(trimws(safe_chr(x)))
+			ifelse(grepl("gol", x), "goal",
+				ifelse(grepl("tarjeta", x), "card",
+					ifelse(grepl("cambio|sustit", x), "sub", "other")
+				)
+			)
+		}
 
-      # 2. Añadir sustituciones
-      cambios <- ev[!is.na(ev$Sustituido) & ev$Sustituido == 1 & ev$Jugador != "Rival", ]
+		match_events <- shiny::reactive({
+			if (nrow(df_events) == 0 || is.null(col_ev_jornada) || is.null(col_ev_tipo)) {
+				return(df_events[0, , drop = FALSE])
+			}
 
-      # Verificar si existe columna de minuto de cambio
-      columna_minuto <- if ("MinutoCambio" %in% names(cambios)) {
-        "MinutoCambio"
-      } else if ("Minuto" %in% names(cambios)) {
-        "Minuto"
-      } else {
-        NULL
-      }
+			row <- selected_match_row()
+			jornada_selected <- as.character(row[[col_jornada]])
+			d <- df_events[safe_chr(df_events[[col_ev_jornada]]) == jornada_selected, , drop = FALSE]
+			if (nrow(d) == 0) return(d)
 
-      if (!is.null(columna_minuto) && nrow(cambios) > 0) {
-        cambios <- cambios[!is.na(cambios[[columna_minuto]]), ]
+			d$.__etype__ <- event_type_norm(d[[col_ev_tipo]])
+			d <- d[d$.__etype__ %in% c("goal", "card", "sub"), , drop = FALSE]
+			if (nrow(d) == 0) return(d)
 
-        if (nrow(cambios) > 0) {
-          for (i in seq_len(nrow(cambios))) {
-            cambio <- cambios[i, ]
-            eventos_lista[[length(eventos_lista) + 1]] <- list(
-              minuto = cambio[[columna_minuto]],
-              tipo = if (cambio$Titular == 1) "Salida" else "Entrada",
-              jugador = cambio$Jugador,
-              es_cambio = TRUE
-            )
-          }
-        }
-      }
+			minute_num <- if (is.null(col_ev_min)) {
+				rep(NA_real_, nrow(d))
+			} else {
+				suppressWarnings(as.numeric(d[[col_ev_min]]))
+			}
+			d$.__min_sort__ <- ifelse(is.na(minute_num), 999, minute_num)
+			d[order(d$.__min_sort__), , drop = FALSE]
+		})
 
-      if (length(eventos_lista) == 0) {
-        return(tags$div(
-          class = "text-center text-muted py-5",
-          icon("circle-info", class = "fa-2x mb-2"),
-          tags$p("No hay eventos registrados para este partido")
-        ))
-      }
+		event_side <- function(event_row, match_row) {
+			teams <- get_team_names(match_row)
+			own_local <- own_is_local(match_row)
 
-      # Ordenar todos los eventos por minuto
-      eventos_lista <- eventos_lista[order(sapply(eventos_lista, function(x) x$minuto))]
+			if (!is.null(col_ev_side)) {
+				s <- clean_txt(event_row[[col_ev_side]])
+				if (s %in% c("local", "home", "1", "true", "verdadero")) return("local")
+				if (s %in% c("visitante", "away", "0", "false", "falso")) return("visitante")
+			}
 
-      # Generar HTML para todos los eventos
-      eventos_html <- lapply(eventos_lista, function(evento) {
-        es_nuestro <- evento$jugador != "Rival"
+			if (!is.null(col_ev_team)) {
+				tm <- clean_txt(event_row[[col_ev_team]])
+				loc_name <- clean_txt(teams$loc)
+				vis_name <- clean_txt(teams$vis)
+				if (nzchar(tm) && grepl(loc_name, tm, fixed = TRUE)) return("local")
+				if (nzchar(tm) && grepl(vis_name, tm, fixed = TRUE)) return("visitante")
+			}
 
-        # Color y icono según tipo de evento
-        if (evento$tipo == "Gol") {
-          color <- "#198754"
-          icono <- icon("futbol")
-          label <- "Gol"
-        } else if (evento$tipo == "Tarjeta Amarilla") {
-          color <- "#ffc107"
-          icono <- icon("square", style = "color: #ffc107;")
-          label <- "Tarjeta Amarilla"
-        } else if (evento$tipo == "Tarjeta Roja") {
-          color <- "#dc3545"
-          icono <- icon("square", style = "color: #dc3545;")
-          label <- "Tarjeta Roja"
-        } else if (evento$tipo == "Salida") {
-          color <- "#dc3545"
-          icono <- icon("arrow-right")
-          label <- "Sale"
-        } else {  # Entrada
-          color <- "#198754"
-          icono <- icon("arrow-left")
-          label <- "Entra"
-        }
+			player <- if (!is.null(col_ev_player)) clean_txt(event_row[[col_ev_player]]) else ""
+			is_rival <- identical(player, "rival")
+			if (is_rival) {
+				if (own_local) "visitante" else "local"
+			} else {
+				if (own_local) "local" else "visitante"
+			}
+		}
 
-        tags$div(
-          class = "timeline-event left",
-          tags$div(
-            class = "timeline-marker",
-            style = paste0("border-color: ", color, ";")
-          ),
-          tags$div(
-            class = "timeline-content",
-            style = paste0("border-left-color: ", color, ";"),
-            tags$span(class = "timeline-minute", paste0(evento$minuto, "'")),
-            icono,
-            tags$span(
-              class = "timeline-text ms-2",
-              if (es_nuestro) evento$jugador else "Rival",
-              " - ", label
-            )
-          )
-        )
-      })
+		timeline_row_ui <- function(event_row, match_row) {
+			etype <- as.character(event_row$.__etype__)
+			minute <- if (!is.null(col_ev_min)) as.character(event_row[[col_ev_min]]) else "--"
+			player <- if (!is.null(col_ev_player)) as.character(event_row[[col_ev_player]]) else ""
+			detail <- if (!is.null(col_ev_obs)) as.character(event_row[[col_ev_obs]]) else ""
+			side <- event_side(event_row, match_row)
+			teams <- get_team_names(match_row)
+			type_raw <- if (!is.null(col_ev_tipo)) clean_txt(event_row[[col_ev_tipo]]) else ""
+			is_red <- grepl("roja", type_raw)
+			is_yellow <- grepl("amarilla", type_raw)
 
-      tags$div(
-        class = "timeline-container",
-        tags$div(class = "timeline-line"),
-        eventos_html
-      )
-    })
+			dot_class <- switch(etype,
+				goal = "timeline-dot timeline-dot-goal",
+				card = "timeline-dot timeline-dot-card",
+				sub  = "timeline-dot timeline-dot-sub",
+				"timeline-dot"
+			)
 
-    # --- Timeline de cambios ---
-    output$timeline_cambios <- renderUI({
-      ev <- eventos_actual()
-      p <- partido_actual()
+			event_card_class <- switch(etype,
+				goal = "timeline-event-card timeline-event-goal",
+				sub = "timeline-event-card timeline-event-sub",
+				card = if (is_red) "timeline-event-card timeline-event-card-red" else "timeline-event-card timeline-event-card-yellow",
+				"timeline-event-card"
+			)
 
-      if (nrow(ev) == 0 || nrow(p) == 0) {
-        return(tags$div(
-          class = "text-center text-muted py-5",
-          icon("circle-info", class = "fa-2x mb-2"),
-          tags$p("No hay cambios registrados para este partido")
-        ))
-      }
+			title <- switch(etype,
+				goal = paste0("Gol: ", if (nzchar(player)) player else "Equipo"),
+				card = {
+					card_lbl <- if (is_red) "Tarjeta roja" else if (is_yellow) "Tarjeta amarilla" else "Tarjeta"
+					paste0(card_lbl, ": ", if (nzchar(player)) player else "Jugador")
+				},
+				sub = {
+					in_txt <- if (!is.null(col_ev_in)) as.character(event_row[[col_ev_in]]) else ""
+					out_txt <- if (!is.null(col_ev_out)) as.character(event_row[[col_ev_out]]) else ""
+					if (nzchar(in_txt) || nzchar(out_txt)) {
+						paste0("Cambio: ", out_txt, " -> ", in_txt)
+					} else if (nzchar(player)) {
+						paste0("Cambio: ", player)
+					} else {
+						"Cambio"
+					}
+				},
+				"Evento"
+			)
 
-      # Identificar cambios: jugadores con Sustituido == 1
-      # Los que son Titular==1 y Sustituido==1 → salieron
-      # Los que son Titular==0 y Sustituido==1 → entraron
-      # Filtrar primero por las columnas que existen
-      cambios <- ev[!is.na(ev$Sustituido) & ev$Sustituido == 1 & ev$Jugador != "Rival", ]
+			team_lbl <- if (identical(side, "local")) teams$loc else teams$vis
 
-      # Si existe MinutoCambio, usarla; si no, filtrar solo los que tienen Minuto
-      if ("MinutoCambio" %in% names(cambios)) {
-        cambios <- cambios[!is.na(cambios$MinutoCambio), ]
-      } else {
-        # Si no existe MinutoCambio, asumir que no hay info de cambios
-        cambios <- cambios[FALSE, ]  # data frame vacío
-      }
+			card_ui <- tags$div(
+				class = event_card_class,
+				tags$div(class = "timeline-event-team", team_lbl),
+				tags$div(class = "timeline-event-title", title),
+				if (nzchar(detail)) tags$div(class = "timeline-event-meta", detail)
+			)
 
-      if (nrow(cambios) == 0) {
-        return(tags$div(
-          class = "text-center text-muted py-5",
-          icon("circle-info", class = "fa-2x mb-2"),
-          tags$p("No hay cambios registrados para este partido")
-        ))
-      }
+			left_ui <- if (identical(side, "local")) card_ui else NULL
+			right_ui <- if (identical(side, "visitante")) card_ui else NULL
 
-      # Ordenar por minuto de cambio
-      cambios <- cambios[order(cambios$MinutoCambio), ]
+			tags$div(
+				class = "timeline-row",
+				tags$div(class = "timeline-side timeline-side-left", left_ui),
+				tags$div(
+					class = "timeline-center",
+					tags$span(class = dot_class),
+					tags$div(class = "timeline-time", paste0(minute, "'"))
+				),
+				tags$div(class = "timeline-side timeline-side-right", right_ui)
+			)
+		}
 
-      cambios_html <- lapply(seq_len(nrow(cambios)), function(i) {
-        cambio <- cambios[i, ]
-        es_titular <- cambio$Titular == 1
-        lado <- if (i %% 2 == 1) "left" else "right"
+		output$timeline_ui <- shiny::renderUI({
+			d <- match_events()
+			if (nrow(d) == 0) {
+				return(tags$div(class = "text-muted", "No hay eventos de goles, tarjetas o cambios para este partido."))
+			}
 
-        color <- if (es_titular) "#dc3545" else "#198754"  # Rojo=sale, Verde=entra
-        icono <- if (es_titular) icon("arrow-right") else icon("arrow-left")
-        texto <- if (es_titular) "Sale" else "Entra"
-
-        tags$div(
-          class = paste("timeline-event", lado),
-          tags$div(
-            class = "timeline-marker",
-            style = paste0("border-color: ", color, ";")
-          ),
-          tags$div(
-            class = "timeline-content",
-            style = paste0("border-left-color: ", color, ";"),
-            tags$span(class = "timeline-minute", paste0(cambio$MinutoCambio, "'")),
-            icono,
-            tags$span(class = "timeline-text ms-2", cambio$Jugador, " - ", texto)
-          )
-        )
-      })
-
-      tags$div(
-        class = "timeline-container",
-        tags$div(class = "timeline-line"),
-        cambios_html
-      )
-    })
-  })
+			match_row <- selected_match_row()
+			rows <- split(d, seq_len(nrow(d)))
+			items <- lapply(rows, timeline_row_ui, match_row = match_row)
+			tags$div(class = "timeline-wrap", items)
+		})
+	})
 }
-
-## To be copied in the UI
-# mod_matches_ui("matches_1")
-
-## To be copied in the server
-# mod_matches_server("matches_1")
