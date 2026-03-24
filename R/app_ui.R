@@ -44,17 +44,6 @@ app_ui <- function(request) {
             style = "font-size: 1.4rem;",
             title = "Ayuda"
           ),
-          tags$div(
-            class = "d-flex align-items-center gap-2 lang-switch",
-            tags$span("ES", class = "small"),
-            bslib::input_switch(
-              id = "lang_switch",
-              label = NULL,
-              value = FALSE,
-              width = "44px"
-            ),
-            tags$span("EN", class = "small")
-          ),
           actionButton(
             inputId = "btn_expand",
             label = NULL,

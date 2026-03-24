@@ -50,6 +50,8 @@ mod_overview_ui <- function(id) {
     "),
 
     bslib::layout_sidebar(
+      fill     = FALSE,
+      fillable = FALSE,
 
       # ── Sidebar ──────────────────────────────────────────────────────────
       sidebar = bslib::sidebar(
