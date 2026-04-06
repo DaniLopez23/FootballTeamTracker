@@ -159,6 +159,55 @@ mod_overview_ui <- function(id) {
           bslib::card_header("Total goles"),
           bslib::card_body(plotly::plotlyOutput(ns("plot_goals_pie"), height = "300px"))
         )
+      ),
+
+      # Fila 4: Tarjetas línea + Pie
+      bslib::layout_columns(
+        col_widths = c(8, 4),
+        fill = FALSE,
+        class = "mt-3",
+        bslib::card(
+          bslib::card_header(
+            tags$div(
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
+              tags$span("Tarjetas a favor y en contra"),
+              tags$div(
+                class = "d-flex align-items-center gap-2 goals-mode-select",
+                shiny::selectInput(
+                  ns("cards_line_mode"),
+                  label = NULL,
+                  choices = c("Por jornada" = "jornada", "Acumulado" = "acumulado"),
+                  selected = "jornada",
+                  width = "170px"
+                )
+              )
+            )
+          ),
+          bslib::card_body(plotly::plotlyOutput(ns("plot_cards_line"), height = "300px"))
+        ),
+        bslib::card(
+          bslib::card_header("Tarjetas propias"),
+          bslib::card_body(plotly::plotlyOutput(ns("plot_cards_pie"), height = "300px"))
+        )
+      ),
+
+      # Fila 5: Distribución de eventos por minutos
+      bslib::card(
+        class = "mt-3",
+        bslib::card_header(
+          tags$div(
+            class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
+            tags$span("Distribución de eventos por minutos"),
+            shiny::selectInput(
+              ns("events_minutes_type"),
+              label = NULL,
+              choices = c("Goles" = "goal", "Tarjetas" = "card"),
+              selected = "goal",
+              width = "170px"
+            )
+          )
+        ),
+        bslib::card_body(plotly::plotlyOutput(ns("plot_events_minutes"), height = "330px"))
       )
     )
   )
@@ -180,6 +229,10 @@ mod_overview_server <- function(id) {
 
     # --- Carga y procesado del Excel (estático) ---
     df <- readxl::read_excel(app_sys("app/data/CAZALEGAS_B_DATA.xlsx"), sheet = "Partidos")
+    df_events <- tryCatch(
+      readxl::read_excel(app_sys("app/data/CAZALEGAS_B_DATA.xlsx"), sheet = "Eventos"),
+      error = function(e) data.frame()
+    )
     df <- df[order(df$Jornada), ]
     df$goles_favor  <- ifelse(df$ID_EquipoLocal == 1, df$GolesLocal,    df$GolesVisitante)
     df$goles_contra <- ifelse(df$ID_EquipoLocal == 1, df$GolesVisitante, df$GolesLocal)
@@ -254,6 +307,68 @@ mod_overview_server <- function(id) {
       }
 
       if (nrow(d) > 0) d$DifGoles <- cumsum(d$goles_favor - d$goles_contra)
+
+      d
+    })
+
+    # --- Helper columnas / normalización eventos ---
+    pick_col <- function(data, candidates) {
+      found <- candidates[candidates %in% names(data)]
+      if (length(found) == 0) return(NULL)
+      found[[1]]
+    }
+
+    clean_txt <- function(x) {
+      tolower(trimws(as.character(x)))
+    }
+
+    col_ev_tipo <- pick_col(df_events, c("Tipo", "tipo", "Evento"))
+    col_ev_min <- pick_col(df_events, c("Minuto", "minuto", "Min", "Minute"))
+    col_ev_player <- pick_col(df_events, c("Jugador", "jugador", "Player"))
+    col_ev_jornada <- pick_col(df_events, c("Jornada", "jornada"))
+    col_ev_loc_id <- pick_col(df_events, c("EquipoLocalID", "ID_EquipoLocal", "IdEquipoLocal"))
+    col_ev_vis_id <- pick_col(df_events, c("EquipoVisitanteID", "ID_EquipoVisitante", "IdEquipoVisitante"))
+
+    event_type_norm <- function(x) {
+      txt <- clean_txt(x)
+      ifelse(grepl("gol", txt), "goal",
+        ifelse(grepl("tarjeta", txt), "card", "other")
+      )
+    }
+
+    card_type_norm <- function(x) {
+      txt <- clean_txt(x)
+      ifelse(grepl("roja", txt), "roja",
+        ifelse(grepl("amarilla", txt), "amarilla", "otra")
+      )
+    }
+
+    # --- Eventos filtrados por jornadas + localización ---
+    events_filtered <- reactive({
+      if (nrow(df_events) == 0 || is.null(col_ev_tipo)) return(data.frame())
+      d <- df_events
+
+      if (!is.null(col_ev_jornada)) {
+        jornadas_num <- suppressWarnings(as.integer(d[[col_ev_jornada]]))
+        sel <- rv$selected_jornadas
+        if (length(sel) > 0 && length(sel) < max_jornada) {
+          d <- d[jornadas_num %in% sel, , drop = FALSE]
+        }
+      }
+
+      if (!is.null(col_ev_loc_id) && !is.null(col_ev_vis_id)) {
+        local_ids <- suppressWarnings(as.integer(d[[col_ev_loc_id]]))
+        visit_ids <- suppressWarnings(as.integer(d[[col_ev_vis_id]]))
+
+        own_is_local <- ifelse(!is.na(local_ids), local_ids == 1L, FALSE)
+        own_is_visit <- ifelse(!is.na(visit_ids), visit_ids == 1L, FALSE)
+
+        if (isTRUE(input$location == "local")) {
+          d <- d[own_is_local, , drop = FALSE]
+        } else if (isTRUE(input$location == "visitante")) {
+          d <- d[own_is_visit, , drop = FALSE]
+        }
+      }
 
       d
     })
@@ -415,6 +530,135 @@ mod_overview_server <- function(id) {
         hole = 0.35
       ) |>
         plotly::layout(showlegend = FALSE) |>
+        plotly::config(displayModeBar = FALSE)
+    })
+
+    # --- Gráfico: tarjetas por jornada (líneas) ---
+    output$plot_cards_line <- plotly::renderPlotly({
+      d <- events_filtered()
+      if (nrow(d) == 0 || is.null(col_ev_tipo)) return(plotly::plotly_empty())
+
+      et <- event_type_norm(d[[col_ev_tipo]])
+      d <- d[et == "card", , drop = FALSE]
+      if (nrow(d) == 0 || is.null(col_ev_jornada)) return(plotly::plotly_empty())
+
+      jornadas <- sort(unique(suppressWarnings(as.integer(d[[col_ev_jornada]]))))
+      jornadas <- jornadas[!is.na(jornadas)]
+      if (length(jornadas) == 0) return(plotly::plotly_empty())
+
+      own_flag <- if (is.null(col_ev_player)) rep(TRUE, nrow(d)) else clean_txt(d[[col_ev_player]]) != "rival"
+      j_cards <- suppressWarnings(as.integer(d[[col_ev_jornada]]))
+
+      cards_favor <- sapply(jornadas, function(j) sum(j_cards == j & own_flag, na.rm = TRUE))
+      cards_contra <- sapply(jornadas, function(j) sum(j_cards == j & !own_flag, na.rm = TRUE))
+
+      is_accum <- identical(input$cards_line_mode, "acumulado")
+      y_favor <- if (is_accum) cumsum(cards_favor) else cards_favor
+      y_contra <- if (is_accum) cumsum(cards_contra) else cards_contra
+      hover_lbl <- if (is_accum) "tarjetas acumuladas" else "tarjetas"
+
+      plotly::plot_ly(x = jornadas) |>
+        plotly::add_trace(
+          y = y_favor, type = "scatter", mode = "lines+markers", name = "Propias",
+          line = list(color = "#0d6efd", width = 2), marker = list(size = 7, color = "#0d6efd"),
+          text = paste0("J", jornadas, ": ", y_favor, " ", hover_lbl), hoverinfo = "text"
+        ) |>
+        plotly::add_trace(
+          y = y_contra, type = "scatter", mode = "lines+markers", name = "Rivales",
+          line = list(color = "#dc3545", width = 2), marker = list(size = 7, color = "#dc3545"),
+          text = paste0("J", jornadas, ": ", y_contra, " ", hover_lbl), hoverinfo = "text"
+        ) |>
+        plotly::layout(
+          xaxis = list(title = "Jornada", dtick = 1, tickmode = "linear"),
+          yaxis = if (is_accum) {
+            list(title = "Tarjetas acumuladas", rangemode = "tozero")
+          } else {
+            list(title = "Tarjetas por jornada", dtick = 1, rangemode = "tozero")
+          },
+          legend = list(orientation = "h", y = -0.25),
+          hovermode = "x unified"
+        ) |>
+        plotly::config(displayModeBar = FALSE)
+    })
+
+    # --- Gráfico: pie tarjetas propias (amarilla/roja) ---
+    output$plot_cards_pie <- plotly::renderPlotly({
+      d <- events_filtered()
+      if (nrow(d) == 0 || is.null(col_ev_tipo)) return(plotly::plotly_empty())
+
+      et <- event_type_norm(d[[col_ev_tipo]])
+      own_flag <- if (is.null(col_ev_player)) rep(TRUE, nrow(d)) else clean_txt(d[[col_ev_player]]) != "rival"
+      d <- d[et == "card" & own_flag, , drop = FALSE]
+      if (nrow(d) == 0) return(plotly::plotly_empty())
+
+      card_kind <- card_type_norm(d[[col_ev_tipo]])
+      vals <- c(
+        sum(card_kind == "amarilla", na.rm = TRUE),
+        sum(card_kind == "roja", na.rm = TRUE)
+      )
+      if (sum(vals) == 0) return(plotly::plotly_empty())
+
+      plotly::plot_ly(
+        labels = c("Amarillas", "Rojas"),
+        values = vals,
+        type = "pie",
+        marker = list(colors = c("#f0ad00", "#dc3545")),
+        textinfo = "label+percent",
+        hoverinfo = "label+value",
+        hole = 0.35
+      ) |>
+        plotly::layout(showlegend = FALSE) |>
+        plotly::config(displayModeBar = FALSE)
+    })
+
+    # --- Gráfico: distribución de eventos por franjas de minuto ---
+    output$plot_events_minutes <- plotly::renderPlotly({
+      d <- events_filtered()
+      if (nrow(d) == 0 || is.null(col_ev_tipo) || is.null(col_ev_min)) return(plotly::plotly_empty())
+
+      target_type <- input$events_minutes_type
+      et <- event_type_norm(d[[col_ev_tipo]])
+      d <- d[et == target_type, , drop = FALSE]
+      if (nrow(d) == 0) return(plotly::plotly_empty())
+
+      minute_num <- suppressWarnings(as.numeric(d[[col_ev_min]]))
+      valid <- !is.na(minute_num)
+      d <- d[valid, , drop = FALSE]
+      minute_num <- minute_num[valid]
+      if (length(minute_num) == 0) return(plotly::plotly_empty())
+
+      bins <- c(0, 15, 30, 45, 60, 75, 90)
+      labels <- c("0-15", "15-30", "30-45", "45-60", "60-75", "75-90")
+      bands <- cut(minute_num, breaks = bins, labels = labels, include.lowest = TRUE, right = TRUE)
+
+      own_flag <- if (is.null(col_ev_player)) rep(TRUE, nrow(d)) else clean_txt(d[[col_ev_player]]) != "rival"
+
+      own_count <- as.numeric(table(factor(bands[own_flag], levels = labels)))
+      rival_count <- as.numeric(table(factor(bands[!own_flag], levels = labels)))
+
+      plotly::plot_ly(x = labels) |>
+        plotly::add_bars(
+          y = own_count,
+          name = "Propios",
+          marker = list(color = "#0d6efd"),
+          text = own_count,
+          textposition = "outside",
+          hovertemplate = "%{x}<br>Propios: %{y}<extra></extra>"
+        ) |>
+        plotly::add_bars(
+          y = rival_count,
+          name = "Rivales",
+          marker = list(color = "#dc3545"),
+          text = rival_count,
+          textposition = "outside",
+          hovertemplate = "%{x}<br>Rivales: %{y}<extra></extra>"
+        ) |>
+        plotly::layout(
+          barmode = "group",
+          xaxis = list(title = "Franja de minutos"),
+          yaxis = list(title = "Eventos", rangemode = "tozero", dtick = 1),
+          legend = list(orientation = "h", y = -0.2)
+        ) |>
         plotly::config(displayModeBar = FALSE)
     })
   })

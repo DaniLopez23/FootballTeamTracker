@@ -1,6 +1,9 @@
 #' The application User-Interface
 #'
 #' @param request Internal parameter for `{shiny}`.
+#' The application User-Interface
+#'
+#' @param request Internal parameter for `{shiny}`.
 #'     DO NOT REMOVE.
 #' @import shiny
 #' @noRd
@@ -30,7 +33,7 @@ app_ui <- function(request) {
       bslib::nav_panel(
         title = "Comparador",
         value = "comparador",
-        tags$p("Comparador content here.")
+        mod_player_comparator_ui("comparador")
       ),
       bslib::nav_spacer(),
       bslib::nav_item(

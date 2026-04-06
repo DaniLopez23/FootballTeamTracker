@@ -2,10 +2,10 @@ Package: FootballTeamTracker
 Title: An Amazing Shiny App
 Version: 0.0.0.9000
 Authors@R: 
-    person(given = "firstname",
-           family = "lastname",
+    person(given = "Daniel",
+           family = "Lopez",
            role = c("aut", "cre"),
-           email = "your@email.com")
+           email = "daniel.lopez.paredes.23@gmail.com")
 Description: What the package does (one paragraph).
 License: What license is it under?
 Imports:
@@ -13,9 +13,11 @@ Imports:
     config,
     DT,
     golem,
+    pkgload,
     plotly,
     readxl,
     shiny
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.3.3
+

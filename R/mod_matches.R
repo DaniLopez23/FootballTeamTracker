@@ -19,10 +19,68 @@ mod_matches_ui <- function(id) {
         flex-direction: column;
         gap: 0.45rem;
       }
+      /* Forzar columna flex en el panel lateral para que el área scrollable tenga altura real */
+      .matches-sidebar-pane {
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        height: 100% !important;
+      }
+      .matches-sidebar-pane > * {
+        min-height: 0;
+      }
+      /* El sidebar de bslib no ocupa 100dvh: el scroll debe llenar la columna real */
+      .matches-sidebar-stack {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100%;
+        max-height: 100%;
+      }
       .matches-sidebar-scroll {
-        max-height: 100dvh;
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: auto;
-        padding-right: 0.25rem;
+        overflow-x: hidden;
+        padding-right: 0.35rem;
+        -webkit-overflow-scrolling: touch;
+      }
+      .match-item-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        width: 100%;
+      }
+      .match-item-main {
+        flex: 1;
+        min-width: 0;
+        text-align: left;
+      }
+      .match-result-badge {
+        flex-shrink: 0;
+        width: 1.65rem;
+        height: 1.65rem;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.82rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+      .match-result-badge--V {
+        background: #d1e7dd;
+        color: #198754;
+      }
+      .match-result-badge--D {
+        background: #f8d7da;
+        color: #dc3545;
+      }
+      .match-result-badge--E {
+        background: #fff3cd;
+        color: #b08500;
       }
       .match-item {
         width: 100%;
@@ -234,6 +292,42 @@ mod_matches_ui <- function(id) {
         border-left: 4px solid #0d6efd;
         background: #edf4ff;
       }
+      .timeline-sub-pair {
+        margin-top: 0.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .timeline-sub-pair-row {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #1f2d3d;
+      }
+      .timeline-sub-pair-row .sub-ico-out {
+        color: #dc3545;
+        width: 1rem;
+        text-align: center;
+      }
+      .timeline-sub-pair-row .sub-ico-in {
+        color: #198754;
+        width: 1rem;
+        text-align: center;
+      }
+      .timeline-sub-pair-arrows {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        margin: 0.15rem 0;
+      }
       .timeline-event-card-yellow {
         border-left: 4px solid #f0ad00;
         background: #fff9e8;
@@ -280,14 +374,18 @@ mod_matches_ui <- function(id) {
     ),
 
     bslib::layout_sidebar(
-      fill = FALSE,
-      fillable = FALSE,
+      fill = TRUE,
+      fillable = TRUE,
 
       sidebar = bslib::sidebar(
-        width = 300,
+        width = 380,
         open = TRUE,
-        tags$p("Partidos", style = "font-weight: 700; margin-bottom: 0.5rem;"),
-        tags$div(class = "matches-sidebar-scroll", shiny::uiOutput(ns("matches_list")))
+        class = "matches-sidebar-pane p-0",
+        tags$div(
+          class = "matches-sidebar-stack p-3",
+          tags$p("Partidos", style = "font-weight: 700; margin-bottom: 0.5rem; flex-shrink: 0;"),
+          tags$div(class = "matches-sidebar-scroll", shiny::uiOutput(ns("matches_list")))
+        )
       ),
 
       tags$div(
@@ -466,6 +564,37 @@ mod_matches_server <- function(id) {
       }
     })
 
+    own_match_result_badge <- function(row) {
+      lid <- suppressWarnings(as.integer(row$LocalID[[1]]))
+      vid <- suppressWarnings(as.integer(row$VisitanteID[[1]]))
+      gl <- suppressWarnings(as.integer(row$GolesLocal[[1]]))
+      gv <- suppressWarnings(as.integer(row$GolesVisitante[[1]]))
+      own_goals <- if (!is.na(lid) && lid == own_team_id) {
+        gl
+      } else if (!is.na(vid) && vid == own_team_id) {
+        gv
+      } else {
+        NA_integer_
+      }
+      rival_goals <- if (!is.na(lid) && lid == own_team_id) {
+        gv
+      } else if (!is.na(vid) && vid == own_team_id) {
+        gl
+      } else {
+        NA_integer_
+      }
+      if (is.na(own_goals) || is.na(rival_goals)) {
+        return(list(letter = "\u2014", cls = "match-result-badge--E"))
+      }
+      if (own_goals > rival_goals) {
+        list(letter = "V", cls = "match-result-badge--V")
+      } else if (own_goals < rival_goals) {
+        list(letter = "D", cls = "match-result-badge--D")
+      } else {
+        list(letter = "E", cls = "match-result-badge--E")
+      }
+    }
+
     output$matches_list <- shiny::renderUI({
       if (nrow(df_matches) == 0) {
         return(tags$div(class = "text-muted", "No hay partidos disponibles."))
@@ -476,14 +605,22 @@ mod_matches_server <- function(id) {
         jornada <- as.character(row$Jornada)
         score <- paste0(row$GolesLocal, " - ", row$GolesVisitante)
         is_active <- identical(rv$selected_match, idx)
+        badge <- own_match_result_badge(row)
 
         tags$button(
           type = "button",
           class = paste("match-item", if (is_active) "match-item-active" else ""),
           onclick = paste0("Shiny.setInputValue('", ns("match_click"), "', ", idx, ", {priority:'event'})"),
-          tags$div(class = "match-jornada", paste("Jornada", jornada)),
-          tags$div(class = "match-teams", paste0(row$Local, " vs ", row$Visitante)),
-          tags$div(class = "match-score", score)
+          tags$div(
+            class = "match-item-inner",
+            tags$div(
+              class = "match-item-main",
+              tags$div(class = "match-jornada", paste("Jornada", jornada)),
+              tags$div(class = "match-teams", paste0(row$Local, " vs ", row$Visitante)),
+              tags$div(class = "match-score", score)
+            ),
+            tags$span(class = paste("match-result-badge", badge$cls), badge$letter)
+          )
         )
       })
 
@@ -510,18 +647,27 @@ mod_matches_server <- function(id) {
       sustituido_num <- if (!is.null(col_ev_sustituido)) suppressWarnings(as.numeric(d[[col_ev_sustituido]])) else rep(NA_real_, nrow(d))
       minutos_totales_num <- if (!is.null(col_ev_mintot)) suppressWarnings(as.numeric(d[[col_ev_mintot]])) else rep(NA_real_, nrow(d))
 
-      is_change_by_flags <- !is.na(sustituido_num) & sustituido_num == 1
-      et[is_change_by_flags & et == "other"] <- "sub"
+      titular_int <- suppressWarnings(as.integer(round(titular_num)))
+      sustituido_int <- suppressWarnings(as.integer(round(sustituido_num)))
+      tipo_txt <- if (!is.null(col_ev_tipo)) clean_txt(d[[col_ev_tipo]]) else rep("", nrow(d))
+      tipo_cambio <- grepl("cambio|sustit", tipo_txt)
 
-      d$.__sub_kind__ <- ifelse(
-        is_change_by_flags & !is.na(titular_num) & titular_num == 1,
-        "sale",
-        ifelse(
-          is_change_by_flags & !is.na(titular_num) & titular_num == 0,
-          "entra",
-          ""
-        )
-      )
+      is_change_by_flags <- !is.na(sustituido_int) & sustituido_int == 1L &
+        !is.na(titular_int) & titular_int %in% c(0L, 1L)
+
+      et[is_change_by_flags] <- "sub"
+
+      sub_kind <- rep("", nrow(d))
+      sub_kind[is_change_by_flags & titular_int == 1L] <- "sale"
+      sub_kind[is_change_by_flags & titular_int == 0L] <- "entra"
+
+      needs_kind <- sub_kind == "" & (et == "sub" | tipo_cambio) &
+        !is.na(titular_int) & titular_int %in% c(0L, 1L)
+      sub_kind[needs_kind & titular_int == 1L] <- "sale"
+      sub_kind[needs_kind & titular_int == 0L] <- "entra"
+      et[needs_kind] <- "sub"
+
+      d$.__sub_kind__ <- sub_kind
 
       d$.__etype__ <- et
 
@@ -532,7 +678,9 @@ mod_matches_server <- function(id) {
       is_entra <- d$.__sub_kind__ == "entra"
 
       minute_calc[is_sale & !is.na(minutos_totales_num)] <- minutos_totales_num[is_sale & !is.na(minutos_totales_num)]
+      minute_calc[is_sale & is.na(minute_calc) & !is.na(minute_num)] <- minute_num[is_sale & is.na(minute_calc) & !is.na(minute_num)]
       minute_calc[is_entra & !is.na(minutos_totales_num)] <- 90 - minutos_totales_num[is_entra & !is.na(minutos_totales_num)]
+      minute_calc[is_entra & is.na(minute_calc) & !is.na(minute_num)] <- minute_num[is_entra & is.na(minute_calc) & !is.na(minute_num)]
 
       d$.__minute_calc__ <- minute_calc
       d$.__minute_show__ <- ifelse(
@@ -832,6 +980,192 @@ mod_matches_server <- function(id) {
       )
     }
 
+    merge_timeline_blocks <- function(d) {
+      if (nrow(d) == 0) return(list())
+      d$.__seq__ <- seq_len(nrow(d))
+      is_sub <- d$.__etype__ == "sub"
+      blocks <- list()
+
+      d_other <- d[!is_sub, , drop = FALSE]
+      if (nrow(d_other) > 0) {
+        for (i in seq_len(nrow(d_other))) {
+          blocks[[length(blocks) + 1L]] <- list(
+            kind = "single",
+            row = d_other[i, , drop = FALSE],
+            ord = d_other$.__seq__[[i]]
+          )
+        }
+      }
+
+      d_sub <- d[is_sub, , drop = FALSE]
+      ambig_sub <- d_sub[!(d_sub$.__sub_kind__ %in% c("sale", "entra")), , drop = FALSE]
+      d_sub <- d_sub[d_sub$.__sub_kind__ %in% c("sale", "entra"), , drop = FALSE]
+
+      if (nrow(ambig_sub) > 0) {
+        for (i in seq_len(nrow(ambig_sub))) {
+          blocks[[length(blocks) + 1L]] <- list(
+            kind = "single",
+            row = ambig_sub[i, , drop = FALSE],
+            ord = ambig_sub$.__seq__[[i]]
+          )
+        }
+      }
+
+      if (nrow(d_sub) > 0) {
+        # Emparejar cambios: minuto sale (MT o Min) == 90 - MT entra (o Min entra si no hay MT)
+        n_sub <- nrow(d_sub)
+        pair_clock <- rep(NA_real_, n_sub)
+        for (i in seq_len(n_sub)) {
+          r <- d_sub[i, , drop = FALSE]
+          sk <- as.character(r$.__sub_kind__[[1]])
+          mt <- if (!is.null(col_ev_mintot)) {
+            suppressWarnings(as.numeric(r[[col_ev_mintot]][[1]]))
+          } else {
+            NA_real_
+          }
+          mn <- if (!is.null(col_ev_min)) {
+            suppressWarnings(as.numeric(r[[col_ev_min]][[1]]))
+          } else {
+            NA_real_
+          }
+          # Misma lógica que minute_calc: sale = minuto de salida (prioridad MT como en Excel);
+          # entra = 90 - MT (min. jugados del entrante) o Minuto si no hay MT
+          if (identical(sk, "sale")) {
+            pair_clock[i] <- if (!is.na(mt)) mt else if (!is.na(mn)) mn else NA_real_
+          } else if (identical(sk, "entra")) {
+            pair_clock[i] <- if (!is.na(mt)) 90 - mt else if (!is.na(mn)) mn else NA_real_
+          }
+        }
+        pair_clock <- round(pair_clock)
+        ms <- as.character(d_sub$.__minute_show__)
+        mc_fb <- if (".__minute_calc__" %in% names(d_sub)) {
+          suppressWarnings(as.numeric(d_sub$.__minute_calc__))
+        } else {
+          rep(NA_real_, n_sub)
+        }
+        sub_group <- ifelse(
+          !is.na(pair_clock),
+          paste0("clk:", pair_clock),
+          ifelse(
+            !is.na(mc_fb),
+            paste0("mc:", round(mc_fb)),
+            paste0("ms:", ms)
+          )
+        )
+        grp_order <- unique(sub_group[order(d_sub$.__seq__)])
+        for (gk in grp_order) {
+          g <- d_sub[sub_group == gk, , drop = FALSE]
+          g <- g[order(g$.__seq__), , drop = FALSE]
+          sales <- g[g$.__sub_kind__ == "sale", , drop = FALSE]
+          entras <- g[g$.__sub_kind__ == "entra", , drop = FALSE]
+          sales <- sales[order(sales$.__seq__), , drop = FALSE]
+          entras <- entras[order(entras$.__seq__), , drop = FALSE]
+          np <- min(nrow(sales), nrow(entras))
+          if (np > 0L) {
+            for (k in seq_len(np)) {
+              blocks[[length(blocks) + 1L]] <- list(
+                kind = "sub_pair",
+                sale = sales[k, , drop = FALSE],
+                entra = entras[k, , drop = FALSE],
+                ord = min(sales$.__seq__[[k]], entras$.__seq__[[k]])
+              )
+            }
+          }
+          if (nrow(sales) > np) {
+            for (k in seq(from = np + 1L, to = nrow(sales))) {
+              blocks[[length(blocks) + 1L]] <- list(
+                kind = "single",
+                row = sales[k, , drop = FALSE],
+                ord = sales$.__seq__[[k]]
+              )
+            }
+          }
+          if (nrow(entras) > np) {
+            for (k in seq(from = np + 1L, to = nrow(entras))) {
+              blocks[[length(blocks) + 1L]] <- list(
+                kind = "single",
+                row = entras[k, , drop = FALSE],
+                ord = entras$.__seq__[[k]]
+              )
+            }
+          }
+        }
+      }
+
+      ord <- order(vapply(blocks, function(b) b$ord, integer(1)), seq_along(blocks))
+      blocks[ord]
+    }
+
+    timeline_sub_pair_ui <- function(sale_row, entra_row, match_row) {
+      minute <- if (".__minute_show__" %in% names(sale_row)) {
+        as.character(sale_row$.__minute_show__)
+      } else {
+        "--"
+      }
+      side <- event_side(sale_row, match_row)
+      team_lbl <- if (identical(side, "local")) {
+        as.character(match_row$Local[[1]])
+      } else {
+        as.character(match_row$Visitante[[1]])
+      }
+
+      player_out <- if (!is.null(col_ev_player)) as.character(sale_row[[col_ev_player]]) else ""
+      player_in <- if (!is.null(col_ev_player)) as.character(entra_row[[col_ev_player]]) else ""
+      detail_out <- if (!is.null(col_ev_obs)) trimws(as.character(sale_row[[col_ev_obs]])) else ""
+      detail_in <- if (!is.null(col_ev_obs)) trimws(as.character(entra_row[[col_ev_obs]])) else ""
+      detail <- if (nzchar(detail_out) && nzchar(detail_in) && detail_out != detail_in) {
+        paste(detail_out, detail_in, sep = " \u00b7 ")
+      } else if (nzchar(detail_out)) {
+        detail_out
+      } else {
+        detail_in
+      }
+
+      card_ui <- tags$div(
+        class = "timeline-event-card timeline-event-sub",
+        tags$div(class = "timeline-event-team", team_lbl),
+        tags$div(
+          class = "timeline-sub-pair",
+          tags$div(
+            class = "timeline-sub-pair-row",
+            tags$span(class = "sub-ico-out", shiny::icon("arrow-right-from-bracket")),
+            tags$span(paste0("Sale: ", if (nzchar(player_out)) player_out else "\u2014"))
+          ),
+          tags$div(
+            class = "timeline-sub-pair-arrows",
+            shiny::icon("arrow-right-arrow-left"),
+            tags$span("Cambio")
+          ),
+          tags$div(
+            class = "timeline-sub-pair-row",
+            tags$span(class = "sub-ico-in", shiny::icon("arrow-right-to-bracket")),
+            tags$span(paste0("Entra: ", if (nzchar(player_in)) player_in else "\u2014"))
+          )
+        ),
+        if (nzchar(detail)) tags$div(class = "timeline-event-meta", detail)
+      )
+
+      left_ui <- if (identical(side, "local")) card_ui else NULL
+      right_ui <- if (identical(side, "visitante")) card_ui else NULL
+
+      tags$div(
+        class = "timeline-row",
+        tags$div(
+          class = "timeline-side timeline-side-left",
+          left_ui
+        ),
+        tags$div(
+          class = "timeline-center",
+          tags$span(class = "timeline-dot timeline-dot-sub"),
+          tags$div(class = "timeline-time", paste0(minute, "'"))
+        ),
+        tags$div(
+          class = "timeline-side timeline-side-right",
+          right_ui
+        )
+      )
+    }
+
     output$timeline_ui <- shiny::renderUI({
       d <- selected_match_events()
       if (nrow(d) == 0) {
@@ -844,8 +1178,14 @@ mod_matches_server <- function(id) {
       }
 
       match_row <- selected_match_row()
-      rows <- split(d, seq_len(nrow(d)))
-      items <- lapply(rows, timeline_row_ui, match_row = match_row)
+      blocks <- merge_timeline_blocks(d)
+      items <- lapply(blocks, function(b) {
+        if (identical(b$kind, "sub_pair")) {
+          timeline_sub_pair_ui(b$sale, b$entra, match_row)
+        } else {
+          timeline_row_ui(b$row, match_row)
+        }
+      })
       tags$div(class = "timeline-wrap", items)
     })
   })
