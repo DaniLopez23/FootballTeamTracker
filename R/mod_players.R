@@ -313,7 +313,7 @@ mod_players_server <- function(id) {
           margin = list(l = 280, t = 20),
           showlegend = FALSE
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
 
     # --- Gráfico: Top 10 Tarjetas ---
@@ -351,7 +351,7 @@ mod_players_server <- function(id) {
           margin = list(l = 280, t = 20),
           showlegend = FALSE
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
 
     # --- Gráfico: Distribución de minutos por jugador ---
@@ -444,7 +444,7 @@ mod_players_server <- function(id) {
           margin = list(t = 30, b = 120),
           showlegend = FALSE
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
   })
 }

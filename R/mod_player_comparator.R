@@ -11,9 +11,6 @@ mod_player_comparator_ui <- function(id) {
   ns <- NS(id)
   tagList(
     tags$style("
-      .player-img {
-        width: 80px; height: 80px; object-fit: cover; border-radius: 50%; border: 2px solid #dee2e6; margin-bottom: 0.5rem;
-      }
       .player-col {
         display: flex; flex-direction: column; align-items: center; gap: 1rem;
       }
@@ -75,7 +72,8 @@ mod_player_comparator_ui <- function(id) {
       bslib::card(
         bslib::card_header(
           class = "d-flex align-items-center gap-2",
-          tags$span("Minutos jugados por jornada")
+          tags$span("Minutos jugados por jornada"),
+          bslib::input_switch(ns("minutes_cumulative"), "Acumulado", value = FALSE)
         ),
         bslib::card_body(
           plotly::plotlyOutput(ns("line_minutes"), height = "320px")
@@ -85,7 +83,8 @@ mod_player_comparator_ui <- function(id) {
         bslib::card_header(
           class = "d-flex align-items-center gap-2",
           tags$span("Goles/Tarjetas por jornada"),
-          shiny::selectInput(ns("line_mode"), NULL, choices = c("Goles" = "goles", "Tarjetas" = "tarjetas"), width = "180px")
+          shiny::selectInput(ns("line_mode"), NULL, choices = c("Goles" = "goles", "Tarjetas" = "tarjetas"), width = "180px"),
+          bslib::input_switch(ns("line_cumulative"), "Acumulado", value = FALSE)
         ),
         bslib::card_body(
           plotly::plotlyOutput(ns("line_events"), height = "320px")
@@ -130,7 +129,110 @@ mod_player_comparator_server <- function(id){
     col_ev_min      <- pick_col(df_eventos, c("Minuto", "minuto", "Min", "Minute"))
     col_ev_loc      <- pick_col(df_eventos, c("Localizacion", "localizacion", "Localización"))
     col_ev_minutos  <- pick_col(df_eventos, c("MinutosTotales", "minutostotales", "Minutos"))
-    col_ev_img      <- pick_col(df_eventos, c("Imagen", "imagen", "Img", "img"))
+
+    normalize_minutes <- function(values) {
+      values <- suppressWarnings(as.numeric(values))
+      values <- values[!is.na(values)]
+      if (length(values) == 0) return(NA_real_)
+      min(90, max(values, na.rm = TRUE))
+    }
+
+    player_minutes_by_jornada <- function(d) {
+      if (is.null(col_ev_player) || is.null(col_ev_jornada) || is.null(col_ev_minutos) || nrow(d) == 0) {
+        return(data.frame(Jugador = character(), Jornada = integer(), Minutos = numeric()))
+      }
+
+      tmp <- d[!is.na(d[[col_ev_player]]) & d[[col_ev_player]] != "Rival" & !is.na(d[[col_ev_jornada]]), , drop = FALSE]
+      if (nrow(tmp) == 0) {
+        return(data.frame(Jugador = character(), Jornada = integer(), Minutos = numeric()))
+      }
+
+      tmp$.__jugador__ <- as.character(tmp[[col_ev_player]])
+      tmp$.__jornada__ <- suppressWarnings(as.integer(tmp[[col_ev_jornada]]))
+      tmp$.__minutos__ <- suppressWarnings(as.numeric(tmp[[col_ev_minutos]]))
+      tmp <- tmp[!is.na(tmp$.__jornada__) & !is.na(tmp$.__minutos__), , drop = FALSE]
+      if (nrow(tmp) == 0) {
+        return(data.frame(Jugador = character(), Jornada = integer(), Minutos = numeric()))
+      }
+
+      agg <- aggregate(
+        tmp$.__minutos__,
+        by = list(Jugador = tmp$.__jugador__, Jornada = tmp$.__jornada__),
+        FUN = normalize_minutes
+      )
+      names(agg)[3] <- "Minutos"
+      agg
+    }
+
+    complete_series <- function(series, jornadas, jugador = NA_character_) {
+      if (length(jornadas) == 0) {
+        return(series[0, , drop = FALSE])
+      }
+      base <- data.frame(Jornada = as.integer(jornadas))
+      merged <- merge(base, series, by = "Jornada", all.x = TRUE, sort = TRUE)
+      if ("Jugador" %in% names(merged)) merged$Jugador[is.na(merged$Jugador)] <- jugador
+      if ("Minutos" %in% names(merged)) merged$Minutos[is.na(merged$Minutos)] <- 0
+      if ("Valor" %in% names(merged)) merged$Valor[is.na(merged$Valor)] <- 0
+      merged
+    }
+
+    player_events_by_jornada <- function(d, player, mode) {
+      if (is.null(col_ev_player) || is.null(col_ev_jornada) || is.null(col_ev_tipo) || nrow(d) == 0) {
+        return(data.frame(Jugador = character(), Jornada = integer(), Valor = numeric()))
+      }
+
+      if (mode == "goles") {
+        event_mask <- d[[col_ev_tipo]] == "Gol"
+      } else {
+        event_mask <- d[[col_ev_tipo]] %in% c("Tarjeta Amarilla", "Tarjeta Roja")
+      }
+
+      event_mask <- event_mask & d[[col_ev_player]] == player
+
+      tmp <- d[event_mask & !is.na(d[[col_ev_jornada]]), , drop = FALSE]
+      if (nrow(tmp) == 0) {
+        return(data.frame(Jugador = character(), Jornada = integer(), Valor = numeric()))
+      }
+
+      tmp$.__jugador__ <- as.character(tmp[[col_ev_player]])
+      tmp$.__jornada__ <- suppressWarnings(as.integer(tmp[[col_ev_jornada]]))
+      agg <- aggregate(
+        rep(1, nrow(tmp)),
+        by = list(Jugador = tmp$.__jugador__, Jornada = tmp$.__jornada__),
+        FUN = length
+      )
+      names(agg)[3] <- "Valor"
+      agg
+    }
+
+    series_minutes <- function(player, d) {
+      jornadas <- sort(unique(rv$selected_jornadas))
+      if (length(jornadas) == 0) {
+        return(data.frame(Jugador = character(), Jornada = integer(), Minutos = numeric()))
+      }
+
+      mins_tbl <- player_minutes_by_jornada(d)
+      mins_tbl <- mins_tbl[mins_tbl$Jugador == player, c("Jugador", "Jornada", "Minutos"), drop = FALSE]
+      if (nrow(mins_tbl) == 0) {
+        return(data.frame(Jugador = player, Jornada = jornadas, Minutos = 0))
+      }
+      complete_series(mins_tbl, jornadas, player)
+    }
+
+    series_events <- function(player, d, mode) {
+      jornadas <- sort(unique(rv$selected_jornadas))
+      if (length(jornadas) == 0) {
+        return(data.frame(Jugador = character(), Jornada = integer(), Valor = numeric()))
+      }
+
+      vals_tbl <- player_events_by_jornada(d, player, mode)
+      if (nrow(vals_tbl) == 0) {
+        return(data.frame(Jugador = player, Jornada = jornadas, Valor = 0))
+      }
+
+      vals_tbl <- vals_tbl[, c("Jugador", "Jornada", "Valor"), drop = FALSE]
+      complete_series(vals_tbl, jornadas, player)
+    }
 
     # Asegura que max_jornada sea al menos 1 y que las jornadas siempre existan
     max_jornada <- suppressWarnings(
@@ -204,7 +306,7 @@ mod_player_comparator_server <- function(id){
       d
     })
 
-    # --- Jugadores y opción media equipo ---
+    # --- Jugadores ---
     jugadores <- reactive({
       d <- df_filtered()
       if (is.null(col_ev_player)) return(character(0))
@@ -222,29 +324,18 @@ mod_player_comparator_server <- function(id){
 
     observe({
       jug <- jugadores()
-      choices <- c("Media equipo" = "__media__", jug)
-      # Selecciona dos jugadores distintos si hay, si no, selecciona media y el primero
-      sel1 <- choices[1]
-      sel2 <- if (length(choices) > 2) choices[2] else if (length(choices) > 1) choices[2] else choices[1]
-      # Si solo hay uno, ambos serán iguales
+      choices <- jug
+      sel1 <- if (length(choices) > 0) choices[1] else character(0)
+      sel2 <- if (length(choices) > 1) choices[2] else sel1
       updateSelectInput(session, "player1", choices = choices, selected = sel1)
       updateSelectInput(session, "player2", choices = choices, selected = sel2)
     })
 
-    # --- Imagen y nombre jugador ---
+    # --- Nombre jugador ---
     player_info_ui <- function(player) {
-      d <- df_filtered()
-      if (player == "__media__") {
-        img <- "https://cdn-icons-png.flaticon.com/512/847/847969.png"
-        nombre <- "Media equipo"
-      } else {
-        row <- d[d$Jugador == player & !is.na(d$Imagen) & nzchar(d$Imagen), ]
-        img <- if (nrow(row) > 0) row$Imagen[1] else "https://cdn-icons-png.flaticon.com/512/847/847969.png"
-        nombre <- player
-      }
       tags$div(
-        tags$img(src = img, class = "player-img"),
-        tags$div(nombre, style = "font-weight:600; font-size:1.1rem;")
+        tags$div(player, style = "font-weight:700; font-size:1.1rem; text-align:center;"),
+        tags$div("Comparativa de rendimiento", style = "font-size:0.85rem; color:#6c757d; text-align:center;")
       )
     }
 
@@ -265,18 +356,15 @@ mod_player_comparator_server <- function(id){
 
     player_stats <- function(player) {
       d <- df_filtered()
-      if (player == "__media__") {
-        # Media equipo
-        goles <- sum(d$Tipo == "Gol" & d$Jugador != "Rival", na.rm = TRUE) / length(jugadores())
-        tarjetas <- sum(d$Tipo %in% c("Tarjeta Amarilla", "Tarjeta Roja") & d$Jugador != "Rival", na.rm = TRUE) / length(jugadores())
-        minutos <- sum(d$MinutosTotales[!is.na(d$MinutosTotales) & d$Jugador != "Rival"], na.rm = TRUE) / length(jugadores())
-        list(goles = round(goles,1), tarjetas = round(tarjetas,1), minutos = round(minutos,1))
+      minutes_tbl <- player_minutes_by_jornada(d)
+      goles <- sum(d$Tipo == "Gol" & d$Jugador == player, na.rm = TRUE)
+      tarjetas <- sum(d$Tipo %in% c("Tarjeta Amarilla", "Tarjeta Roja") & d$Jugador == player, na.rm = TRUE)
+      minutos <- if (nrow(minutes_tbl) > 0) {
+        sum(minutes_tbl$Minutos[minutes_tbl$Jugador == player], na.rm = TRUE)
       } else {
-        goles <- sum(d$Tipo == "Gol" & d$Jugador == player, na.rm = TRUE)
-        tarjetas <- sum(d$Tipo %in% c("Tarjeta Amarilla", "Tarjeta Roja") & d$Jugador == player, na.rm = TRUE)
-        minutos <- sum(d$MinutosTotales[!is.na(d$MinutosTotales) & d$Jugador == player], na.rm = TRUE)
-        list(goles = goles, tarjetas = tarjetas, minutos = minutos)
+        0
       }
+      list(goles = goles, tarjetas = tarjetas, minutos = minutos)
     }
 
     output$player1_goals   <- renderUI({ kpi_card(icon("soccer-ball"), player_stats(input$player1)$goles, "Goles") })
@@ -290,27 +378,72 @@ mod_player_comparator_server <- function(id){
     barplot_dist <- function(player, mode = c("goles", "tarjetas")) {
       d <- df_filtered()
       mode <- match.arg(mode)
-      if (player == "__media__") {
-        # Media equipo
-        if (mode == "goles") {
-          d_gol <- d[d$Tipo == "Gol" & d$Jugador != "Rival", ]
-        } else {
-          d_gol <- d[d$Tipo %in% c("Tarjeta Amarilla", "Tarjeta Roja") & d$Jugador != "Rival", ]
-        }
+      if (mode == "goles") {
+        d_gol <- d[d$Tipo == "Gol" & d$Jugador == player, ]
       } else {
-        if (mode == "goles") {
-          d_gol <- d[d$Tipo == "Gol" & d$Jugador == player, ]
-        } else {
-          d_gol <- d[d$Tipo %in% c("Tarjeta Amarilla", "Tarjeta Roja") & d$Jugador == player, ]
-        }
+        d_gol <- d[d$Tipo %in% c("Tarjeta Amarilla", "Tarjeta Roja") & d$Jugador == player, ]
       }
-      if (nrow(d_gol) == 0) return(plotly::plotly_empty())
-      mins <- d_gol$Minuto
+      if (nrow(d_gol) == 0) {
+        if (mode == "goles") {
+          return(
+            plotly::plot_ly() |>
+              plotly::layout(
+                xaxis = list(visible = FALSE),
+                yaxis = list(visible = FALSE),
+                annotations = list(
+                  list(
+                    text = "Sin goles",
+                    x = 0.5, y = 0.5,
+                    xref = "paper", yref = "paper",
+                    showarrow = FALSE,
+                    font = list(size = 18, color = "#6c757d")
+                  )
+                ),
+                margin = list(t = 30, b = 30)
+              )
+          )
+        }
+        return(plotly::plotly_empty())
+      }
+      mins <- suppressWarnings(as.numeric(d_gol$Minuto))
       mins <- mins[!is.na(mins)]
-      if (length(mins) == 0) return(plotly::plotly_empty())
-      tb <- as.data.frame(table(mins))
-      names(tb) <- c("Minuto", "Eventos")
-      tb$Minuto <- as.numeric(as.character(tb$Minuto))
+      if (length(mins) == 0) {
+        if (mode == "goles") {
+          return(
+            plotly::plot_ly() |>
+              plotly::layout(
+                xaxis = list(visible = FALSE),
+                yaxis = list(visible = FALSE),
+                annotations = list(
+                  list(
+                    text = "Sin goles",
+                    x = 0.5, y = 0.5,
+                    xref = "paper", yref = "paper",
+                    showarrow = FALSE,
+                    font = list(size = 18, color = "#6c757d")
+                  )
+                ),
+                margin = list(t = 30, b = 30)
+              )
+          )
+        }
+        return(plotly::plotly_empty())
+      }
+      if (mode == "goles") {
+        bins <- cut(
+          mins,
+          breaks = c(0, seq(10, 90, by = 10)),
+          include.lowest = TRUE,
+          right = TRUE,
+          labels = c("0-10", paste(seq(11, 81, by = 10), seq(20, 90, by = 10), sep = "-"))
+        )
+        tb <- as.data.frame(table(bins))
+        names(tb) <- c("Minuto", "Eventos")
+      } else {
+        tb <- as.data.frame(table(mins))
+        names(tb) <- c("Minuto", "Eventos")
+        tb$Minuto <- as.numeric(as.character(tb$Minuto))
+      }
       plotly::plot_ly(
         x = tb$Minuto,
         y = tb$Eventos,
@@ -326,7 +459,7 @@ mod_player_comparator_server <- function(id){
           margin = list(t = 30, b = 60),
           showlegend = FALSE
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     }
 
     output$player1_barplot <- renderUI({
@@ -351,25 +484,26 @@ mod_player_comparator_server <- function(id){
       jug1 <- input$player1
       jug2 <- input$player2
       jugadores_sel <- unique(c(jug1, jug2))
-      jornadas <- sort(unique(d$Jornada))
+      cumulative <- isTRUE(input$minutes_cumulative)
       df_lines <- data.frame()
       for (jug in jugadores_sel) {
-        if (jug == "__media__") {
-          mins_j <- tapply(d$MinutosTotales[!is.na(d$MinutosTotales) & d$Jugador != "Rival"], d$Jornada[!is.na(d$MinutosTotales) & d$Jugador != "Rival"], mean, default = 0)
-        } else {
-          mins_j <- tapply(d$MinutosTotales[!is.na(d$MinutosTotales) & d$Jugador == jug], d$Jornada[!is.na(d$MinutosTotales) & d$Jugador == jug], sum, default = 0)
+        mins_j <- series_minutes(jug, d)
+        if (nrow(mins_j) == 0) next
+        if (cumulative) {
+          mins_j <- mins_j[order(mins_j$Jornada), , drop = FALSE]
+          mins_j$Minutos <- cumsum(mins_j$Minutos)
         }
-        df_lines <- rbind(df_lines, data.frame(Jugador = jug, Jornada = as.numeric(names(mins_j)), Minutos = as.numeric(mins_j)))
+        df_lines <- rbind(df_lines, mins_j)
       }
       if (nrow(df_lines) == 0) return(plotly::plotly_empty())
       plotly::plot_ly(df_lines, x = ~Jornada, y = ~Minutos, color = ~Jugador, type = 'scatter', mode = 'lines+markers') |>
         plotly::layout(
           xaxis = list(title = "Jornada"),
-          yaxis = list(title = "Minutos"),
+          yaxis = list(title = if (cumulative) "Minutos acumulados" else "Minutos"),
           margin = list(t = 30, b = 60),
           showlegend = TRUE
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
 
     # --- Gráfico de líneas: goles/tarjetas por jornada ---
@@ -379,32 +513,30 @@ mod_player_comparator_server <- function(id){
       jug2 <- input$player2
       jugadores_sel <- unique(c(jug1, jug2))
       mode <- input$line_mode %||% "goles"
+      cumulative <- isTRUE(input$line_cumulative)
       df_lines <- data.frame()
       for (jug in jugadores_sel) {
-        if (jug == "__media__") {
-          if (mode == "goles") {
-            vals <- tapply(d$Tipo == "Gol" & d$Jugador != "Rival", d$Jornada, sum, default = 0) / length(jugadores())
-          } else {
-            vals <- tapply(d$Tipo %in% c("Tarjeta Amarilla", "Tarjeta Roja") & d$Jugador != "Rival", d$Jornada, sum, default = 0) / length(jugadores())
-          }
-        } else {
-          if (mode == "goles") {
-            vals <- tapply(d$Tipo == "Gol" & d$Jugador == jug, d$Jornada, sum, default = 0)
-          } else {
-            vals <- tapply(d$Tipo %in% c("Tarjeta Amarilla", "Tarjeta Roja") & d$Jugador == jug, d$Jornada, sum, default = 0)
-          }
+        vals_tbl <- series_events(jug, d, mode)
+        if (nrow(vals_tbl) == 0) next
+        if (cumulative) {
+          vals_tbl <- vals_tbl[order(vals_tbl$Jornada), , drop = FALSE]
+          vals_tbl$Valor <- cumsum(vals_tbl$Valor)
         }
-        df_lines <- rbind(df_lines, data.frame(Jugador = jug, Jornada = as.numeric(names(vals)), Valor = as.numeric(vals)))
+        df_lines <- rbind(df_lines, vals_tbl)
       }
       if (nrow(df_lines) == 0) return(plotly::plotly_empty())
       plotly::plot_ly(df_lines, x = ~Jornada, y = ~Valor, color = ~Jugador, type = 'scatter', mode = 'lines+markers') |>
         plotly::layout(
           xaxis = list(title = "Jornada"),
-          yaxis = list(title = if (mode == "goles") "Goles" else "Tarjetas"),
+          yaxis = list(title = if (cumulative) {
+            if (mode == "goles") "Goles acumulados" else "Tarjetas acumuladas"
+          } else {
+            if (mode == "goles") "Goles" else "Tarjetas"
+          }),
           margin = list(t = 30, b = 60),
           showlegend = TRUE
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
   })
 }

@@ -449,7 +449,7 @@ mod_overview_server <- function(id) {
           yaxis = list(title = "Posici\u00f3n", autorange = "reversed", dtick = 1),
           hovermode = "x unified"
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
 
     # --- Gráfico: victorias / empates / derrotas (desde goles, reacciona al filtro) ---
@@ -472,7 +472,7 @@ mod_overview_server <- function(id) {
           yaxis      = list(title = "Partidos", dtick = 1, range = c(0, max(valores) + 1.5)),
           showlegend = FALSE
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
 
     # --- Gráfico: goles por jornada (líneas) ---
@@ -514,7 +514,7 @@ mod_overview_server <- function(id) {
           legend = list(orientation = "h", y = -0.25),
           hovermode = "x unified"
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
 
     # --- Gráfico: pie goles totales ---
@@ -530,7 +530,7 @@ mod_overview_server <- function(id) {
         hole = 0.35
       ) |>
         plotly::layout(showlegend = FALSE) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
 
     # --- Gráfico: tarjetas por jornada (líneas) ---
@@ -578,7 +578,7 @@ mod_overview_server <- function(id) {
           legend = list(orientation = "h", y = -0.25),
           hovermode = "x unified"
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
 
     # --- Gráfico: pie tarjetas propias (amarilla/roja) ---
@@ -608,7 +608,7 @@ mod_overview_server <- function(id) {
         hole = 0.35
       ) |>
         plotly::layout(showlegend = FALSE) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
 
     # --- Gráfico: distribución de eventos por franjas de minuto ---
@@ -659,7 +659,7 @@ mod_overview_server <- function(id) {
           yaxis = list(title = "Eventos", rangemode = "tozero", dtick = 1),
           legend = list(orientation = "h", y = -0.2)
         ) |>
-        plotly::config(displayModeBar = FALSE)
+        plotly::config(displayModeBar = TRUE)
     })
   })
 }
