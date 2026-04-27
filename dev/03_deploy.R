@@ -27,9 +27,9 @@ devtools::build()
 
 ## Docker ----
 ## If you want to deploy via a generic Dockerfile
-golem::add_dockerfile_with_renv()
-## If you want to deploy to ShinyProxy
-golem::add_dockerfile_with_renv_shinyproxy()
+# golem::add_dockerfile_with_renv()
+# ## If you want to deploy to ShinyProxy
+# golem::add_dockerfile_with_renv_shinyproxy()
 
 ## Posit ----
 ## If you want to deploy on Posit related platforms
@@ -42,6 +42,11 @@ golem::add_shinyserver_file()
 ## Add/update manifest file (optional; for Git backed deployment on Posit )
 rsconnect::writeManifest()
 
+# 1. Desactivar validaciones de renv que causan el error
+options(renv.config.snapshot.validate = FALSE)
+options(rsconnect.packrat = TRUE)
+
+
 ## In command line.
 rsconnect::deployApp(
   appName = desc::desc_get_field("Package"),
@@ -50,7 +55,6 @@ rsconnect::deployApp(
     # Add any additional files unique to your app here.
     "R/",
     "inst/",
-    "data/",
     "NAMESPACE",
     "DESCRIPTION",
     "app.R"

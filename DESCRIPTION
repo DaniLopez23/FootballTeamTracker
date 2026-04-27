@@ -1,13 +1,13 @@
 Package: FootballTeamTracker
-Title: An Amazing Shiny App
-Version: 0.0.0.9000
-Authors@R: 
+Title: Football Team Tracker App
+Version: 0.0.1
+Authors@R:
     person(given = "Daniel",
            family = "Lopez",
            role = c("aut", "cre"),
            email = "daniel.lopez.paredes.23@gmail.com")
-Description: What the package does (one paragraph).
-License: What license is it under?
+Description: A Shiny app to track and visualize football team statistics.
+License: MIT
 Imports:
     bslib,
     config,
@@ -18,6 +18,5 @@ Imports:
     readxl,
     shiny
 Encoding: UTF-8
-LazyData: true
+LazyData: false
 RoxygenNote: 7.3.3
-
