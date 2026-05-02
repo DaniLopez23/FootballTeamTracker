@@ -6,6 +6,8 @@ Memoria breve del proyecto Football Team Tracker, una aplicación Shiny orientad
 
 El objetivo principal del proyecto es centralizar la información deportiva de la temporada en un dashboard interactivo para analizar resultados, evolución competitiva y aportación individual de los jugadores. La aplicación permite consultar el estado general del equipo, revisar partidos concretos y comparar métricas de jugadores con una lectura rápida y visual.
 
+Con esto se pretende demostrar como con eventos simples como goles, tarjetas y minutos jugados se pueden extraer insights relevantes sobre el rendimiento colectivo del equipo e individual de cada jugador, facilitando la toma de decisiones o la revisión de la temporada.
+
 ## Estructura del dashboard y funcionalidades
 
 El dashboard se organiza en cuatro secciones:
@@ -47,4 +49,4 @@ La codificación de color se mantiene consistente: verdes para valores favorable
 
 ## Conclusiones y mejoras futuras
 
-La aplicación convierte datos dispersos en una visión operativa de la temporada, útil para revisar rendimiento colectivo e individual con una interfaz compacta e interactiva. Como mejoras futuras, sería interesante añadir exportación de informes, nuevas comparativas entre jugadores o temporadas, mayor automatización en la carga de datos y visualizaciones complementarias para analizar zonas del campo o perfiles de rendimiento con más detalle.
+La aplicación convierte datos dispersos en una visión operativa de la temporada, útil para revisar rendimiento colectivo e individual con una interfaz compacta e interactiva. Como mejoras futuras, sería interesante añadir exportación de informes y una mayor automatización en la carga de datos y visualizaciones complementarias para analizar zonas del campo o perfiles de rendimiento con más detalle.
