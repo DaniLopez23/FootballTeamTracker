@@ -541,8 +541,3 @@ mod_player_comparator_server <- function(id){
   })
 }
     
-## To be copied in the UI
-# mod_player_comparator_ui("player_comparator_1")
-    
-## To be copied in the server
-# mod_player_comparator_server("player_comparator_1")

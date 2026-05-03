@@ -448,9 +448,3 @@ mod_players_server <- function(id) {
     })
   })
 }
-
-## To be copied in the UI
-# mod_players_ui("players_1")
-
-## To be copied in the server
-# mod_players_server("players_1")

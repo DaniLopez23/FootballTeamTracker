@@ -224,7 +224,7 @@ mod_overview_server <- function(id) {
     team_info <- list(
       season = "2025/26",
       club   = "C.D Cazalegas - Ebora Formaci\u00f3n",
-      coach  = "Francisco Javier L\u00f3pez de Francisco"
+      coach  = "Entrenador A"
     )
 
     # --- Carga y procesado del Excel (estático) ---
@@ -663,9 +663,3 @@ mod_overview_server <- function(id) {
     })
   })
 }
-
-## To be copied in the UI
-# mod_overview_ui("overview_1")
-
-## To be copied in the server
-# mod_overview_server("overview_1")
