@@ -2,6 +2,10 @@
 
 Memoria breve del proyecto Football Team Tracker, una aplicación Shiny orientada al seguimiento del rendimiento de un equipo de fútbol a partir de los partidos de una temporada y eventos básicos registrados.
 
+## Autor
+
+Daniel López Paredes
+
 ## Descripción y objetivos
 
 Football Team Tracker es una aplicación Shiny pensada para concentrar en un único entorno la información generada por un equipo de fútbol a lo largo de una temporada. A partir de datos de partidos y eventos básicos, la herramienta organiza la información para que el usuario pueda seguir la evolución del equipo, revisar encuentros concretos y entender el impacto de cada jugador en el rendimiento general. El enfoque del proyecto combina análisis descriptivo y visualización interactiva para transformar datos dispersos en una lectura clara, rápida y útil tanto a nivel colectivo como individual.
@@ -49,7 +53,11 @@ Debido a motivaciones de privacidad, no se han incluido datos personales de los 
 
 La versión desplegada del dashboard está disponible en:
 
-https://mymusapps.shinyapps.io/FootballTeamTracker/
+<https://mymusapps.shinyapps.io/FootballTeamTracker/>
+
+El código fuente de la aplicación se encuentra en el repositorio de GitHub:
+
+<https://github.com/DaniLopez23/FootballTeamTracker>
 
 ## Fundamentos de visualización aplicados
 
@@ -58,7 +66,7 @@ El dashboard aplica una combinación de visualizaciones pensada para comparar, r
 -   **Series temporales** para observar la progresión por jornada en clasificación, goles, tarjetas y minutos.
 -   **Barras horizontales** para ordenar rankings de jugadores y facilitar la comparación entre muchos nombres.
 -   **Gráficos de tarta** para resumir proporciones de goles y tarjetas.
--   **Timelines** para reconstruir el relato de cada partido minuto a minuto.
+-   **Timelines de eventos** para reconstruir el relato de cada partido minuto a minuto.
 -   **Filtros interactivos** para reducir la carga cognitiva y centrar el análisis en un tramo de temporada o en un contexto concreto.
 
 La codificación de color se mantiene consistente: verdes para valores favorables, rojos para desfavorables, azules para información principal y amarillos para tarjetas o alertas. Esto refuerza la lectura rápida y la interpretación inmediata.
